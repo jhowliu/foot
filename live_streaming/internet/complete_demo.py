@@ -37,31 +37,16 @@ def direct_to_model(raw_data):
 
     if buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
-        buffer_data_all[int(slipper_no)][buffer_count[slipper_no]] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
+        buffer_data_all[slipper_no][buffer_count[slipper_no]] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
         buffer_count[slipper_no] += 1
     
     else:
-        #print slipper_no, sent_count[slipper_no]
-        #print "Terry"
-        #print sent_data_all[1][0]
-        #print "Jhow"
-        #print sent_data_all[2][0]
         mean = np.mean(buffer_data_all[slipper_no][:,0])
         now_data = abs(float(raw_data['FFA2']))
         #Over bound and start receive the data
         if ((abs(now_data-mean) > bound) | start_recieve[slipper_no] == 1):
-            
-            #Save the data to buffer
-            #buffer_data[:buffer_length-1] = buffer_data[1:buffer_length]
-            #buffer_data[buffer_length-1] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
-            
             #Record the data for prediction model
             sent_data_all[slipper_no][sent_count[slipper_no]] = [float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])]
-            #print len(sent_data[sent_count]),len(buffer_data[buffer_length-1])
-            
-            print slipper_no, sent_count[slipper_no]
-            print 'Terry', sent_data_all[1][sent_count[slipper_no]]
-            print 'Jhow', sent_data_all[2][sent_count[slipper_no]]
             #Record the data index
             sent_count[slipper_no] += 1
             start_recieve[slipper_no] = 1
@@ -83,23 +68,16 @@ def direct_to_model(raw_data):
                 start_recieve[slipper_no] = 0
 
                 first[slipper_no] = 1
-                    
+                
                 print result
-                #message = str(slipper_no) + ',' + str(result) + '\n'
-                #clientsocket.sendall(message)
+                message = str(slipper_no) + ',' + str(result) + '\n'
+                clientsocket.sendall(message)
         else:
-            #print counter, "stop"
             counter += 1
-            if counter == 50:
+            if counter == 100:
                 counter = 0
-                #print "Terry"
-                #print sent_data_all[1]
-                #print "Jhow"
-                #print sent_data_all[2]
-                #print "send_stop"
-                #message = str(slipper_no) + '\n'
-                #clientsocket.sendall(message)
-    #Reach the num of records 
+                message = str(slipper_no) + '\n'
+                clientsocket.sendall(message)
             
 
 
@@ -110,28 +88,10 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         direct_to_model(raw_data)
 
 #def start_multithread(thread_num, name):
-#    print 'Start: ', thread_num
 #    server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
 #    server.serve_forever()
 
 def start_server(name, member_num):
-    print 'current ip address: ' + HOST
-    Server_Host = '140.118.155.161'
-    Server_Port = 15712
-    cut_coef = 4
-    cut_size = 50
-    slide_size = 30
-    predict_slide_size = 20
-    buffer_length = 10
-    buffer_data_all = [np.zeros([buffer_length, 6])] * member_num
-    buffer_count = [0] * member_num
-    sent_data_all = [np.zeros([cut_size*cut_coef,6])] * member_num
-    sent_count = [0] * member_num
-    start_recieve = [0] * member_num
-    first = [1] * member_num
-    counter = 0
-    
-    
     global clientsocket
     global counter   
     global first 
@@ -144,28 +104,36 @@ def start_server(name, member_num):
     global sent_data_all
     global sent_count
     global start_recieve
-    
-    clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-    #clientsocket.connect((Server_Host, Server_Port))
-    #print "Connect to server: " + Server_Host
-    
-    data = train.Load(name)
-    training_features, labels, dictionary,pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.5)
-    
-    #train.Ploting3D(training_features, labels)
-    print "Predicting"
-    model = train.Training(np.array(training_features), labels)
-    
-    #print "fucking len"
-    #print len(data[-1])
-    #tmp = train.Cut(train.FuzzyDirection(data[-1])[0], 50)
-    #tmp = train.FuzzyDirection(train.Cut(data[-1], 50)[:-1])
-    
-    #print len(data[-1]), len(data[-1])/50,len(tmp)
     global dictionary
     global model
     global pca_model
     
+
+    print 'current ip address: ' + HOST
+    Server_Host = '140.118.155.161'
+    Server_Port = 15712
+    cut_coef = 4
+    cut_size = 50
+    slide_size = 30
+    predict_slide_size = 20
+    buffer_length = 10
+    buffer_data_all = [np.zeros([buffer_length, 6]) for _ in xrange(member_num-1)]
+    buffer_count = [0] * member_num
+    sent_data_all = [np.zeros([cut_size*cut_coef, 6]) for _ in xrange(member_num-1)]
+
+    sent_count = [0] * member_num
+    start_recieve = [0] * member_num
+    first = [1] * member_num
+    counter = 0
+    
+    clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+    clientsocket.connect((Server_Host, Server_Port))
+    
+    data = train.Load(name)
+    training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.5)
+    print "Predicting"
+    model = train.Training(np.array(training_features), labels)
+
     
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
     server.serve_forever()
