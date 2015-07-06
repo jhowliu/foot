@@ -1,7 +1,7 @@
 import sys
 import pandas as pd
 
-def parse(filename):
+def Parse(filename):
     data = pd.read_csv(filename)
     data['Label'] = data['Label.1']
 
@@ -15,7 +15,7 @@ def parse(filename):
     data.to_csv(filename, index=False)
 
 # May be use time/sequence interval to cut
-def cutting(data, interval):
+def CutByTime(data, interval):
     first = data['time'][0]
 
     result = []
@@ -30,6 +30,14 @@ def cutting(data, interval):
         tmp.append([x, y, z])
 
     result.append(tmp)
+
+    return result
+
+# Yield n-sized chunks from data
+def CutBySeq(data, n):
+    result = []
+    for i in xrange(0, len(data), n):
+        result.append(data[i:i+n])
 
     return result
 
