@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../lib/')
+sys.path.append('./lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
@@ -32,8 +32,8 @@ def training(data, cut_size=150, sample_size=20):
     return feature
 
 def _Ploting(data):
-    colors = ['r', 'g', 'b', 'k', 'm']
-    labels = ['label_0', 'label_1', 'label_2', 'label_3', 'label_4']
+    colors = ['r', 'g', 'b', 'm']
+    labels = ['label_1', 'label_2', 'label_3', 'label_4']
     fig = plt.figure()
 
     for d, i in zip(data, xrange(len(data))):
@@ -45,33 +45,43 @@ def _Ploting(data):
     plt.legend()
     plt.show()
 
-def Ploting(data, n_dimension=3):
-    #pca = PCA(n_components = n_dimension)
-    mds = MDS(n_components = n_dimension)
-    mds.eps = 0.00001
-    colors = ['r', 'g', 'b', 'k', 'm']
+def Ploting3D(data, n_dimension=3):
+    pca = PCA(n_components = n_dimension)
+    colors = ['r', 'g', 'b', 'm']
     labels = ['label_1', 'label_2', 'label_3', 'label_4']
     fig = plt.figure()
-    #plt.axis([-60, 60, -40, 50])
     ax = fig.add_subplot(111, projection='3d')
 
     for i in xrange(len(data)):
-        tmp = mds.fit_transform(data[i])
+        tmp = pca.fit_transform(data[i])
         ax.scatter(tmp[:, 0], tmp[:, 1], tmp[:, 2], c=colors[i], marker='o')
-        #plt.plot(tmp[:, 0], tmp[:, 1], colors[i]+'o', markersize=8, label=labels[i])
 
-    #plt.xlabel('1st_component')
-    #plt.ylabel('2nd_component')
 
     ax.set_xlabel('1st_component')
     ax.set_ylabel('2nd_component')
     ax.set_zlabel('3rd_component')
 
-    ax.set_xlim3d(-50, 50)
-    ax.set_ylim3d(-50, 50)
-    ax.set_zlim3d(-50, 50)
+    ax.set_xlim3d(-100, 100)
+    ax.set_ylim3d(-60, 50)
+    ax.set_zlim3d(-60, 50)
 
-    #plt.legend(numpoints=1)
+    plt.show()
+
+def Ploting2D(data, n_dimension=2):
+    pca = PCA(n_components = n_dimension)
+    colors = ['r', 'g', 'b', 'm']
+    labels = ['label_1', 'label_2', 'label_3', 'label_4']
+    fig = plt.figure()
+    plt.axis([-100, 100, -50, 50])
+
+    for i in xrange(len(data)):
+        tmp = pca.fit_transform(data[i])
+        plt.plot(tmp[:, 0], tmp[:, 1], colors[i]+'o', markersize=8, label=labels[i])
+
+    plt.xlabel('1st_component')
+    plt.ylabel('2nd_component')
+
+    plt.legend(numpoints=1)
     plt.show()
 
 def FuzzyDirection(data):
