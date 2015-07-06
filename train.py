@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../ts-clustering-classify/ts_cluster')
+sys.path.append('../lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
@@ -16,15 +16,18 @@ def training(data, cut_size=150, sample_size=20):
     testing = []
     feature = []
 
+    # Create dictionary and testing data
     for i in xrange(len(data)):
         print 'Data records: ' + str(len(data[i]))
         tmp = Cut(FuzzyDirection(data[i]), cut_size)[:-1]
-        #feature.append(tmp)
         sample_idx, test_idx = Sampling(tmp, sample_size)
         dictionary.extend(tmp[sample_idx])
         testing.append(tmp[test_idx])
-        print len(dictionary)
-        feature.append(CreateDTWFeature())
+
+    # Create Features
+    for i in xrange(len(data)):
+        print 'Create Feature ' + str(i)
+        feature.append(CreateDTWFeature(dictionary, testing[i]))
 
     return feature
 
