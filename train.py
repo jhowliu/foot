@@ -15,24 +15,21 @@ def training(data, cut_size=150, sample_size=20):
     dictionary = []
     testing = []
     feature = []
-    raw = []
 
     # Create dictionary and testing data
     for i in xrange(len(data)):
         print 'Data records: ' + str(len(data[i]))
         tmp = Cut(FuzzyDirection(data[i]), cut_size)[:-1]
-        raw.append(tmp)
         sample_idx, test_idx = Sampling(tmp, sample_size)
         dictionary.extend(tmp[sample_idx])
         testing.append(tmp[test_idx])
 
     # Create Features
-    '''
     for i in xrange(len(data)):
         print 'Create Feature ' + str(i)
         feature.append(CreateDTWFeature(dictionary, testing[i]))
-    '''
-    return feature, raw, testing
+
+    return feature
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -70,30 +67,16 @@ def Ploting3D(data, n_dimension=3):
 
     plt.show()
 
-def Ploting(data, n_dimension=2):
+def Ploting2D(data, n_dimension=2):
     pca = PCA(n_components = n_dimension)
-    #mds = MDS(n_components = n_dimension)
-    #mds.eps = 0.00001
     colors = ['r', 'g', 'b', 'm']
     labels = ['label_1', 'label_2', 'label_3', 'label_4']
     fig = plt.figure()
     plt.axis([-100, 100, -50, 50])
-    #ax = fig.add_subplot(111, projection='3d')
 
     for i in xrange(len(data)):
-        #tmp = mds.fit_transform(data[i])
         tmp = pca.fit_transform(data[i])
-        #ax.scatter(tmp[:, 0], tmp[:, 1], tmp[:, 2], c=colors[i], marker='o')
         plt.plot(tmp[:, 0], tmp[:, 1], colors[i]+'o', markersize=8, label=labels[i])
-
-
-    #ax.set_xlabel('1st_component')
-    #ax.set_ylabel('2nd_component')
-    #ax.set_zlabel('3rd_component')
-
-    #ax.set_xlim3d(-50, 50)
-    #ax.set_ylim3d(-50, 50)
-    #ax.set_zlim3d(-50, 50)
 
     plt.xlabel('1st_component')
     plt.ylabel('2nd_component')
