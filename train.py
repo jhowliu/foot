@@ -52,9 +52,18 @@ def Ploting3D(data, n_dimension=3):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
+    idx = [0, len(data[0])]
+    combined = np.array(data[0])
+
+    # Combined all data
+    for i in xrange(1, len(data)):
+        combined = np.insert(combined, len(combined), data[i], axis=0)
+        idx.append(idx[i]+len(data[i]))
+
+    combined = pca.fit_transform(combined)
+
     for i in xrange(len(data)):
-        tmp = pca.fit_transform(data[i])
-        ax.scatter(tmp[:, 0], tmp[:, 1], tmp[:, 2], c=colors[i], marker='o')
+        ax.scatter(combined[idx[i]:idx[i+1], 0], combined[idx[i]:idx[i+1], 1], combined[idx[i]:idx[i+1], 2], c=colors[i], marker='o', s=70)
 
 
     ax.set_xlabel('1st_component')
@@ -72,11 +81,19 @@ def Ploting2D(data, n_dimension=2):
     colors = ['r', 'g', 'b', 'm']
     labels = ['label_1', 'label_2', 'label_3', 'label_4']
     fig = plt.figure()
-    plt.axis([-100, 100, -50, 50])
+
+    idx = [0, len(data[0])]
+    combined = np.array(data[0])
+
+    # Combined all data
+    for i in xrange(1, len(data)):
+        combined = np.insert(combined, len(combined), data[i], axis=0)
+        idx.append(idx[i]+len(data[i]))
+
+    combined = pca.fit_transform(combined)
 
     for i in xrange(len(data)):
-        tmp = pca.fit_transform(data[i])
-        plt.plot(tmp[:, 0], tmp[:, 1], colors[i]+'o', markersize=8, label=labels[i])
+        plt.plot(combined[idx[i]:idx[i+1], 0], combined[idx[i]:idx[i+1], 1], colors[i]+'o', markersize=8, label=labels[i])
 
     plt.xlabel('1st_component')
     plt.ylabel('2nd_component')
