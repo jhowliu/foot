@@ -3,6 +3,10 @@ sys.path.append('./lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
+from mlpy import dtw_std as dtw
+from sklearn.svm import LinearSVC 
+from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier 
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -11,25 +15,72 @@ import parse
 
 tool = ts_cluster.ts_cluster(10)
 
-def training(data, cut_size=150, sample_size=20):
+def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
+    testing = []
+    start = 0
+    for i in xrange(num):
+        testing.append(data[start:start+cut_size])
+        start += slidewindow
+    print len(testing)
+    return testing
+    
+def training(data, cut_size=150, sample_size=10):
     dictionary = []
     testing = []
-    feature = []
+    model_feature = []
+    testing_feature = []
+    labels = []
+    testing_label = []
+    correct = 0
 
     # Create dictionary and testing data
     for i in xrange(len(data)):
         print 'Data records: ' + str(len(data[i]))
+        sample_size = (len(data[i])/cut_size) / 2 
+        print sample_size
         tmp = Cut(FuzzyDirection(data[i]), cut_size)[:-1]
-        sample_idx, test_idx = Sampling(tmp, sample_size)
-        dictionary.extend(tmp[sample_idx])
-        testing.append(tmp[test_idx])
+        #sample_idx, test_idx = Sampling(tmp, sample_size)
+        dictionary.extend(Sampling(tmp, sample_size))
+        labels.extend([i]*len(tmp))
+        testing.append(tmp)
+
+    print np.array(dictionary).shape
+    feature = np.array([[0.0] * len(dictionary)])
 
     # Create Features
     for i in xrange(len(data)):
         print 'Create Feature ' + str(i)
-        feature.append(CreateDTWFeature(dictionary, testing[i]))
+        #feature.append(CreateDTWFeature(dictionary, testing[i]))
+        f = CreateDTWFeature(dictionary, testing[i])
+        feature = np.insert(feature, len(feature), f, axis=0)
+        #feature.extend(CreateDTWFeature(dictionary, testing[i]))
+        #model_feature.extend(CreateDTWFeature(dictionary, testing[i]))
 
-    return feature
+    #return feature, labels
+
+    feature = np.delete(feature, 0, axis=0)
+
+    
+    for i in xrange(len(data)):
+        
+        slidewindow = 50
+        num = len(data[i]) / slidewindow
+        
+        tmp = Slide_Cut(FuzzyDirection(data[i]), cut_size, slidewindow, num)
+        testing_label.extend([i] * num)
+        testing_feature.extend(CreateDTWFeature(dictionary, tmp)) 
+
+    #Testing
+    svm = LinearSVC()
+    svm.fit(feature, labels)
+
+    for i in range(len(testing_feature)): 
+        if svm.predict(testing_feature[i]) == testing_label[i]:
+            correct += 1
+    return feature, labels, float(correct) / len(testing_feature)
+    #return feature, float(correct) / len(testing_feature)
+    #return feature
+   
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -45,34 +96,23 @@ def _Ploting(data):
     plt.legend()
     plt.show()
 
-def Ploting3D(data, n_dimension=3):
+def Ploting3D(data, labels, n_dimension=3):
     pca = PCA(n_components = n_dimension)
     colors = ['r', 'g', 'b', 'm']
-    labels = ['label_1', 'label_2', 'label_3', 'label_4']
+    labels_text = ['label_1', 'label_2', 'label_3', 'label_4']
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    idx = [0, len(data[0])]
-    combined = np.array(data[0])
+    tmp = pca.fit_transform(data)
+    print tmp.shape
 
-    # Combined all data
-    for i in xrange(1, len(data)):
-        combined = np.insert(combined, len(combined), data[i], axis=0)
-        idx.append(idx[i]+len(data[i]))
+    map(lambda f, label: ax.scatter(f[0], f[1], f[2], label=labels_text[label], c=colors[label], marker='o', s= 70), tmp, labels)
 
-    combined = pca.fit_transform(combined)
-
-    for i in xrange(len(data)):
-        ax.scatter(combined[idx[i]:idx[i+1], 0], combined[idx[i]:idx[i+1], 1], combined[idx[i]:idx[i+1], 2], c=colors[i], marker='o', s=70)
-
+    print map(lambda f, label: (f[0], f[1], f[2]), tmp, labels)
 
     ax.set_xlabel('1st_component')
     ax.set_ylabel('2nd_component')
     ax.set_zlabel('3rd_component')
-
-    ax.set_xlim3d(-100, 100)
-    ax.set_ylim3d(-60, 50)
-    ax.set_zlim3d(-60, 50)
 
     plt.show()
 
@@ -108,10 +148,10 @@ def FuzzyDirection(data):
     return pca.fit_transform(tmp.T).T
 
 def CreateDTWFeature(sample_data, test_data):
-    features = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: tool.DTWDistance(ts_test, ts_sample), sample_data), test_data)
+    features = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: dtw(ts_test, ts_sample), sample_data), test_data)
 
     f = features(sample_data, test_data)
-
+    np.array(f).shape
     return f
 # Create the BasedDTWDistance features
 '''
@@ -126,10 +166,42 @@ def CreateDTWFeature(data, sample_idx, test_idx):
 '''
 # return index of n-sized samples as dictionary
 def Sampling(data, n):
+    sample_idx = []
+
     all_idx = xrange(len(data))
+
+    labels, centers = Kmeans(data, n)
+    '''
+    knn = KNeighborsClassifier(n_neighbors = 1)
+    knn.fit(data, kmeans.labels_)
+    for mid in kmeans.cluster_centers_:
+        sample_idx.append(knn.kneighbors(mid)[0][0])
+    '''
+    #test_idx = list(set(all_idx) - set(sample_idx))
+    '''
     sample_idx =  np.random.choice(all_idx, n, replace=False)
     test_idx = list(set(all_idx) - set(sample_idx))
-    return np.array(sample_idx), np.array(test_idx)
+    '''
+    #return np.array(sample_idx), np.array(test_idx)
+
+    return centers
+
+
+def Kmeans(data, sample_size):
+    kmeans = KMeans(sample_size, max_iter=1000)
+
+    kmeans.fit(data)
+
+    return kmeans.labels_, kmeans.cluster_centers_
+
+def Slide_Cut(data, size, slidewindow, num):
+    chunks = []
+    start = 0
+    for idx in xrange(num) :
+        chunks.append(data[0][start: start+size])
+        start += slidewindow
+
+    return np.array(chunks)
 
 def Cut(data, n):
     chunks = []
@@ -137,7 +209,8 @@ def Cut(data, n):
     for idx in xrange(0, len(data[0]), n):
         chunks.append(data[0][idx: idx+n])
 
-    return np.array(chunks)
+
+    return np.array(chunks[:-1])
 
 # Return n-sized chucks
 '''
