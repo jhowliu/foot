@@ -10,7 +10,7 @@ import thread
 HOST = ''
 PORT = 3070
 
-BUFFER_SIZE = 512
+BUFFER_SIZE = 1024
 
 
 def direct_to_model(raw_data):
@@ -33,15 +33,18 @@ class TCPHandler(SocketServer.BaseRequestHandler):
             if is_end(json_data):
                 break
 
-            raw_data = json.loads(json_data)
-            direct_to_model(raw_data)
+            try:
+                raw_data = json.loads(json_data)
+                direct_to_model(raw_data)
+            except ValueError:
+                print ValueError
 
     def finish(self):
         print 'disconnect the slippers from ' + self.slipper_addr_str
 
 def start_server():
     print 'current ip address: ' + sk.gethostbyname(sk.gethostname())
-    
+
     server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
 
