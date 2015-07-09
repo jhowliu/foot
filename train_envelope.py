@@ -3,8 +3,6 @@ sys.path.append('./lib/')
 from Envelope import envelope 
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
-from sklearn.manifold import MDS
-from mlpy import dtw_std as dtw
 from sklearn.svm import LinearSVC 
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier 
@@ -24,69 +22,54 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
         start += slidewindow
     print len(testing)
     return testing
-    
-def training(data, cut_size=150, sample_size=10):
-    dictionary = []
-    label_dic = []
-    training = []
-    model_feature = []
-    testing_feature = []
-    labels = []
-    testing_label = []
-    correct = 0
-    num_std = 0.5
 
+def training(data, cut_size=150, slide_size=100, sample_ratio=0.8):
+    dictionary = {'data': [], 'label': []}
+    training   = {'data': [], 'label': []}
+    testing    = {'data': [], 'label': []}
+
+    num_std = 1.5
+
+    print 'Size of sliding is ' + str(slide_size)
+    print 'Size of cutting is ' + str(cut_size)
     # Create dictionary and testing data
     for i in xrange(len(data)):
         print 'Data records: ' + str(len(data[i]))
+        tmp = Slide_Cut(FuzzyDirection(data[i])[0], cut_size, slide_size)
+        print 'Length of data after sliding is ' + str(tmp.shape)
+        sample_size = int(len(tmp) * sample_ratio)
 
-        slidewindow = 50
-        num = len(data[i]) / slidewindow -2
-        # KMeans' n cluster, find n point, 50%
-        sample_size = (len(data[i])/cut_size) / 3 
-        tmp = Slide_Cut(FuzzyDirection(data[i]), cut_size, slidewindow, num)[:-1]
-        #sample_idx, test_idx = Sampling(tmp, sample_size)
-        dictionary.extend(Sampling(tmp, sample_size))
-        label_dic.extend([i] * sample_size)
-        labels.extend([i]*len(tmp))
-        training.append(tmp)
+        sample_idx, testing_idx = Sampling(tmp, sample_size)
+        #_, centers = Kmeans(tmp[sample_idx, :], int(sample_size/2))
+        #training['data'].extend(centers)
+        #training['label'].extend([i]*int(sample_size/2))
+        training['data'].extend(tmp[sample_idx])
+        training['label'].extend([i]*len(sample_idx))
 
-    
-    feature = np.array([[0.0] * len(dictionary[0]) * len(data)])
+        testing['data'].extend(tmp[testing_idx, :])
+        testing['label'].extend([i]*len(testing_idx))
 
-    # Create Features
-    #print len(dictionary)
-    for i in xrange(len(data)):
-        print 'Create Feature ' + str(i)
-        f = envelope(label_dic, dictionary, training[i], num_std)
-        feature = np.insert(feature, len(feature), f, axis=0)
-    
-    #return feature, labels
 
-    feature = np.delete(feature, 0, axis=0)
+    print 'Size of Codebook is ' + str(np.array(training['data']).shape)
 
-    
-    for i in xrange(len(data)):
-        
-        slidewindow = 100
-        num = len(data[i]) / slidewindow -2
-        
-        tmp = Slide_Cut(FuzzyDirection(data[i]), cut_size, slidewindow, num)[:-1]
-        testing_label.extend([i] * len(tmp))
-        testing_feature.extend(envelope(label_dic, dictionary, tmp, num_std)) 
 
-    #Testing
-    print feature.shape, np.array(testing_feature).shape
+    # Create Features of training
+    print 'Create Features'
+    training_feature = envelope(training['label'], training['data'], training['data'], num_std)
+    testing_feature  = envelope(training['label'], training['data'], testing['data'], num_std)
+
+    print np.array(training_feature).shape
+    print np.array(testing_feature).shape
+
+    # Prediction
+    print 'Trainning'
+    # one against one
     svm = LinearSVC()
-    svm.fit(feature, labels)
+    svm.fit(training_feature, training['label'])
+    print 'Predicting'
+    acc = svm.score(testing_feature, testing['label'])
 
-    for i in range(len(testing_feature)): 
-        if svm.predict(testing_feature[i]) == testing_label[i]:
-            correct += 1
-    return feature, labels, float(correct) / len(testing_feature)
-    #return feature, float(correct) / len(testing_feature)
-    #return feature
-   
+    return training_feature, training['label'], acc
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -153,45 +136,13 @@ def FuzzyDirection(data):
 
     return pca.fit_transform(tmp.T).T
 
-def CreateDTWFeature(sample_data, test_data):
-    features = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: dtw(ts_test, ts_sample), sample_data), test_data)
-
-    f = features(sample_data, test_data)
-    np.array(f).shape
-    return f
-# Create the BasedDTWDistance features
-'''
-def CreateDTWFeature(data, sample_idx, test_idx):
-    features = lambda data, sample_idx, test_idx: map(lambda ts_test: map(lambda ts_sample: tool.DTWDistance(ts_test, ts_sample), data[sample_idx]), data[test_idx])
-
-    f1 = features(np.array(data[0]), sample_idx, test_idx)
-    f2 = features(np.array(data[1]), sample_idx, test_idx)
-    f3 = features(np.array(data[2]), sample_idx, test_idx)
-
-    return [f1, f2, f3]
-'''
 # return index of n-sized samples as dictionary
-def Sampling(data, n):
-    sample_idx = []
-
+def Sampling(data, sample_size):
     all_idx = xrange(len(data))
+    sample_idx =  np.random.choice(all_idx, sample_size, replace=False)
+    testing_idx = list(set(all_idx) - set(sample_idx))
 
-    labels, centers = Kmeans(data, n)
-    '''
-    knn = KNeighborsClassifier(n_neighbors = 1)
-    knn.fit(data, kmeans.labels_)
-    for mid in kmeans.cluster_centers_:
-        sample_idx.append(knn.kneighbors(mid)[0][0])
-    '''
-    #test_idx = list(set(all_idx) - set(sample_idx))
-    '''
-    sample_idx =  np.random.choice(all_idx, n, replace=False)
-    test_idx = list(set(all_idx) - set(sample_idx))
-    '''
-    #return np.array(sample_idx), np.array(test_idx)
-
-    return centers
-
+    return np.array(sample_idx), np.array(testing_idx)
 
 def Kmeans(data, sample_size):
     kmeans = KMeans(sample_size, max_iter=1000)
@@ -200,18 +151,19 @@ def Kmeans(data, sample_size):
 
     return kmeans.labels_, kmeans.cluster_centers_
 
-def Slide_Cut(data, size, slidewindow, num):
-    chunks = []
-    start = 0
-    for idx in xrange(num):
-        chunks.append(data[0][start: start+size])
-        start += slidewindow
+# Cut timeseries by Slide Window
+def Slide_Cut(data, cut_size, slide_size):
+    max_bound = len(data) - cut_size
+    indicies = xrange(0, max_bound, slide_size)
+
+    chunks = map(lambda idx: data[idx:idx+cut_size], indicies)
 
     return np.array(chunks)
 
 def Slide_Cut_Rand(data, size, slidewindow, num):
-    chunks = []
     start = 0
+    chunks = []
+
     for idx in xrange(num):
         chunks.append(data[0][start: start+size])
         start += slidewindow
