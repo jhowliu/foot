@@ -1,9 +1,9 @@
 import sys
 sys.path.append('./lib/')
-from Envelope import envelope 
+from Envelope import envelope
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
-from sklearn.svm import LinearSVC 
+from sklearn.svm import LinearSVC
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier 
 import matplotlib.pyplot as plt
@@ -23,12 +23,11 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
-def training(data, cut_size=150, slide_size=100, sample_ratio=0.8):
+def training(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
     dictionary = {'data': [], 'label': []}
     training   = {'data': [], 'label': []}
     testing    = {'data': [], 'label': []}
 
-    num_std = 1.5
 
     print 'Size of sliding is ' + str(slide_size)
     print 'Size of cutting is ' + str(cut_size)
@@ -87,22 +86,23 @@ def _Ploting(data):
 
 def Ploting3D(data, labels, n_dimension=3):
     pca = PCA(n_components = n_dimension)
-    colors = ['r', 'g', 'b', 'm']
-    labels_text = ['label_1', 'label_2', 'label_3', 'label_4']
+    colors = ['r', 'g', 'b', 'm', 'k']
+    #labels_text = ['label_0', 'label_1', 'label_2', 'label_3', 'label_4']
+    labels_text = ['Jhow', 'Terry', 'Tsai']
+    labels = np.array(labels)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     tmp = pca.fit_transform(data)
     print tmp.shape
 
-    map(lambda f, label: ax.scatter(f[0], f[1], f[2], label=labels_text[label], c=colors[label], marker='o', s= 70), tmp, labels)
-
-    print map(lambda f, label: (f[0], f[1], f[2]), tmp, labels)
+    map(lambda i: ax.scatter(tmp[labels==i, 0], tmp[labels==i, 1], tmp[labels==i, 2], label=labels_text[i], c=colors[i], marker='o', s=55), xrange(len(np.unique(labels))))
 
     ax.set_xlabel('1st_component')
     ax.set_ylabel('2nd_component')
     ax.set_zlabel('3rd_component')
 
+    plt.legend(scatterpoints=1, ncol=3)
     plt.show()
 
 def Ploting2D(data, n_dimension=2):
