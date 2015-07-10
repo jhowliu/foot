@@ -1,5 +1,6 @@
 import SocketServer
 import json
+import struct
 
 __author__ = 'maeglin89273'
 
@@ -21,7 +22,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         json_data = self.request[0]
         raw_data = json.loads(json_data)
-        direct_to_model(raw_data)
+        direct_to_model(json_data)
 
 
 def start_server():
