@@ -23,10 +23,36 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
-def training(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
-    dictionary = {'data': [], 'label': []}
-    training   = {'data': [], 'label': []}
-    testing    = {'data': [], 'label': []}
+# Return the trainning fe
+def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
+    trainning = {'data': [], 'label': []}
+    testing   = {'data': [], 'label': []}
+
+    trainning_features = []
+    testing_features   = []
+
+    # Fuzzy the direction and create the trainning data
+    for i in xrange(len(train_data)):
+        print 'Number of records: ' + str(len(train_data[i]))
+        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        trainning['data'].extend(tmp)
+        trainning['label'].extend([i]*len(tmp))
+
+    # Fuzzy the direction and create the testing data
+    for i in xrange(len(test_data)):
+        print 'Number of records: ' + str(len(test_data[i]))
+        tmp = Slide_Cut(FuzzyDirection(test_data[i])[0], cut_size, slide_size)
+        testing['data'].extend(tmp)
+
+    print 'Create Features'
+    trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
+    testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
+
+    return trainning_features, testing_features, trainning['label']
+
+def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
+    training = {'data': [], 'label': []}
+    testing  = {'data': [], 'label': []}
 
 
     print 'Size of sliding is ' + str(slide_size)
@@ -63,12 +89,27 @@ def training(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5)
     # Prediction
     print 'Trainning'
     # one against one
-    svm = LinearSVC()
-    svm.fit(training_feature, training['label'])
+    model = Trainning(training_feature, training['label']);
+
     print 'Predicting'
-    acc = svm.score(testing_feature, testing['label'])
+    acc = Evaluation(testing_feature, testing['label'])
 
     return training_feature, training['label'], acc
+
+def Training(trainning_features, labels):
+    print trainning_features.shape
+    model = LinearSVC()
+    model.fit(trainning_features, labels)
+
+    return model
+
+def Evaluation(model, testing_features, testing_labels):
+    acc = model.score(testing_features, testing_labels)
+    return acc
+
+def Predicting(model, testing_features):
+    predicted_label = model.predict(testing_features)
+    return predicted_label
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -88,7 +129,7 @@ def Ploting3D(data, labels, n_dimension=3):
     pca = PCA(n_components = n_dimension)
     colors = ['r', 'g', 'b', 'm', 'k']
     #labels_text = ['label_0', 'label_1', 'label_2', 'label_3', 'label_4']
-    labels_text = ['Jhow', 'Terry', 'Tsai']
+    labels_text = ['Jhow', 'Terry', 'Tsai', 'Terry']
     labels = np.array(labels)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
