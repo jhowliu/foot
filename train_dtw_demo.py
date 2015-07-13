@@ -24,6 +24,38 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
+def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0.8):
+    trainning = {'data': [], 'label': []}
+
+    trainning_features = []
+    dictionary = []
+
+    # Fuzzy the direction and create the trainning data
+    for i in xrange(len(train_data)):
+        print 'Number of records: ' + str(len(train_data[i]))
+        
+        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        sample_size = int(len(tmp) * sample_ratio)
+        trainning['data'].extend(tmp)
+        trainning['label'].extend([i]*len(tmp))
+        dictionary.extend(Kmeans(tmp, sample_size))
+
+    print 'Create Features'
+    trainning_features = CreateDTWFeature(dictionary, trainning['data'])
+    #trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
+    #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
+
+    return trainning_features, trainning['label'], dictionary
+
+def Test_Preprocessing(test_data, dictionary):
+    tmp = FuzzyDirection(test_data)[0]
+    testing_features = CreateDTWFeature(dictionary, tmp)
+
+    print "Finishing Testing Feature"
+
+    return testing_features
+
+'''
 # Return the trainning feature
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
     trainning = {'data': [], 'label': []}
@@ -57,6 +89,7 @@ def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ra
     #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
 
     return trainning_features, testing_features, trainning['label']
+'''
 
 def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
     training = {'data': [], 'label': []}
@@ -116,7 +149,8 @@ def Evaluation(model, testing_features, testing_labels):
     print acc
     return acc
 
-def Predicting(model, testing_features):
+def Predicting(model, test_data, dictionary):
+    testing_features = Test_Preprocessing(test_data, dictionary)
     predicted_label = model.predict(testing_features)
     return predicted_label
 

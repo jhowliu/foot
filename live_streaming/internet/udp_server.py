@@ -22,6 +22,8 @@ def direct_to_model(raw_data):
     global sent_data
     global sent_count
     global start_recieve
+    global model
+    global dictionary
     if buffer_count < buffer_length:
         buffer_data[buffer_count] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
         buffer_count += 1
@@ -38,10 +40,11 @@ def direct_to_model(raw_data):
             start_recieve = 1
             if sent_count == 50:
                 testing_data = pd.DataFrame(sent_data, columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
-                #train.Predict(testing_data)
+                result = train.Predicting(model, testing_data, dictionary)
                 sent_count = 0
                 start_recieve = 0
                 print testing_data
+                print result
             #print mean, now_data
             #print raw_data['FFA2'], raw_data['FFA3'], raw_data['FFA4'], raw_data['FFA6'], raw_data['FFA7'], raw_data['FFA8']
 
@@ -55,10 +58,10 @@ class UDPHandler(SocketServer.BaseRequestHandler):
 
 def start_server(name):
     print 'current ip address: ' + HOST
-     
+    cut_size = 50
     buffer_data = np.zeros([5, 6])
     buffer_count = 0
-    sent_data = np.zeros([50,6])
+    sent_data = np.zeros([cut_size,6])
     sent_count = 0
     start_recieve = 0
     
@@ -69,7 +72,10 @@ def start_server(name):
     global start_recieve
 
     data = train.Load(name)
-    
+    training_features, labels, dictionary = train.Train_Preprocessing(data, cut_size=cut_size, slide_size=50, sample_ratio=0.2)
+    model = train.Training(np.array(training_features), labels)
+    global dictionary
+    global model
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
     server.serve_forever()
     
