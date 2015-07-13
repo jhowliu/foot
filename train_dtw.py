@@ -3,6 +3,7 @@ sys.path.append('./lib/')
 from Envelope import envelope
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
+from mlpy import dtw_std as dtw
 from sklearn.svm import LinearSVC
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier 
@@ -30,23 +31,30 @@ def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ra
 
     trainning_features = []
     testing_features   = []
+    dictionary = []
 
     # Fuzzy the direction and create the trainning data
     for i in xrange(len(train_data)):
         print 'Number of records: ' + str(len(train_data[i]))
+        
         tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        sample_size = int(len(tmp) * sample_ratio)
         trainning['data'].extend(tmp)
         trainning['label'].extend([i]*len(tmp))
-
+        dictionary.extend(Kmeans(tmp, sample_size))
     # Fuzzy the direction and create the testing data
     for i in xrange(len(test_data)):
         print 'Number of records: ' + str(len(test_data[i]))
+        #tmp = Cut(FuzzyDirection(test_data[i])[0], cut_size)[:-1]
+        
         tmp = Slide_Cut(FuzzyDirection(test_data[i])[0], cut_size, slide_size)
         testing['data'].extend(tmp)
 
     print 'Create Features'
-    trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
-    testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
+    trainning_features = CreateDTWFeature(dictionary, trainning['data'])
+    testing_features = CreateDTWFeature(dictionary, testing['data'])
+    #trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
+    #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
 
     return trainning_features, testing_features, trainning['label']
 
@@ -105,6 +113,7 @@ def Training(trainning_features, labels):
 
 def Evaluation(model, testing_features, testing_labels):
     acc = model.score(testing_features, testing_labels)
+    print acc
     return acc
 
 def Predicting(model, testing_features):
@@ -177,6 +186,13 @@ def FuzzyDirection(data):
 
     return pca.fit_transform(tmp.T).T
 
+def CreateDTWFeature(sample_data, test_data):
+    features = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: dtw(ts_test, ts_sample), sample_data), test_data)
+    
+    f = features(sample_data, test_data)
+    np.array(f).shape
+    return f
+
 # return index of n-sized samples as dictionary
 def Sampling(data, sample_size):
     all_idx = xrange(len(data))
@@ -189,8 +205,9 @@ def Kmeans(data, sample_size):
     kmeans = KMeans(sample_size, max_iter=1000)
 
     kmeans.fit(data)
+    
 
-    return kmeans.labels_, kmeans.cluster_centers_
+    return kmeans.cluster_centers_
 
 # Cut timeseries by Slide Window
 def Slide_Cut(data, cut_size, slide_size):
@@ -212,9 +229,8 @@ def Slide_Cut_Rand(data, size, slidewindow, num):
 
 def Cut(data, n):
     chunks = []
-
-    for idx in xrange(0, len(data[0]), n):
-        chunks.append(data[0][idx: idx+n])
+    for idx in xrange(0, len(data), n):
+        chunks.append(data[idx: idx+n])
 
 
     return np.array(chunks[:-1])
@@ -223,7 +239,6 @@ def Cut(data, n):
 '''
 def Cut(data, n):
     axis3_chunks = []
-
 
     for idx in xrange(0, len(data), n):
         axis1_chunks.append(list(data['Axis1'][idx:idx+n]))
@@ -244,21 +259,22 @@ if __name__ == '__main__':
     if len(sys.argv) < 5:
         print 'python <python file> [filename1] [filename2] [filename3] [filename4]'
     name = []
-    for i in range(1, len(sys.argv)):
+    for i in range(1,len(sys.argv)):
         name.append(sys.argv[i])
+
 
     data = Load(name)
     acc = []
     label = []
     f = []
     cut_s = []
-    out = open('env_jhow.csv', 'w')
-    for cut_size in range(100,200,20):
-        trainning_features, testing_features, labels = Preprocessing(data[:-1],  [data[-1]], cut_size=cut_size, slide_size=50, num_std = 1.0)
-        model = Training(np.array(trainning_features), labels)
-        out.write(str(cut_size) + ',' + str(Evaluation(model, testing_features, [0]*len(testing_features))) + '\n')
-        tmp = np.insert(trainning_features, len(trainning_features), testing_features, axis=0)
+    out = open('dtw_terry_slide_50.csv', 'w')
+    for cut_size in range(10,110,10):
+        training_feature, testing_feature, labels = Preprocessing(data[:-1], [data[-1]], cut_size=cut_size, slide_size=50)
+        model = Training(np.array(training_feature), labels)
+        out.write(str(cut_size) + ',' + str(Evaluation(model, testing_feature, [1]*len(testing_feature))) + '\n')
+        tmp = np.insert(training_feature, len(training_feature), testing_feature, axis=0)
         tmp_labels = labels
-        tmp_labels.extend([3] * len(testing_features))
+        tmp_labels.extend([3] * len(testing_feature))
         Ploting3D(tmp, tmp_labels)
     print acc

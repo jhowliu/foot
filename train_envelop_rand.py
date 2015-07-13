@@ -211,7 +211,6 @@ def Slide_Cut_Rand(data, size):
     chunks = []
     start = 0
     max_idx = len(data[0]) - size
-    print max_idx
     all_idx = np.random.choice(xrange(max_idx), int(0.8*max_idx), replace=False)
     train_idx = np.random.choice(all_idx, int(0.2*len(all_idx)), replace=False)
     test_idx = list(set(all_idx) - set(train_idx))

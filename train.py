@@ -24,25 +24,31 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
     
-def training(data, cut_size=150, sample_size=10):
+def training(data, cut_size=50, ratio = 0.5):
+    training_set = []
+    testing_set = []
+    training_label = []
+    testing_label = []
     dictionary = []
-    testing = []
-    model_feature = []
     testing_feature = []
     labels = []
-    testing_label = []
     correct = 0
 
     # Create dictionary and testing data
     for i in xrange(len(data)):
         print 'Data records: ' + str(len(data[i]))
-        sample_size = (len(data[i])/cut_size) / 2 
+        training_now, testing_now = Slide_Cut_Rand(FuzzyDirection(data[i]), cut_size)
+        sample_size = int(len(training_now) * ratio) 
         print sample_size
-        tmp = Cut(FuzzyDirection(data[i]), cut_size)[:-1]
         #sample_idx, test_idx = Sampling(tmp, sample_size)
-        dictionary.extend(Sampling(tmp, sample_size))
-        labels.extend([i]*len(tmp))
-        testing.append(tmp)
+        dictionary.extend(Sampling(training_now, sample_size))
+        # Get training and testing set
+        training_label.extend([i]*len(training_now))
+        training_set.append(training_now)
+        testing_label.extend([i]*len(testing_now))
+        testing_set.append(testing_now)
+        #labels.extend([i]*len(tmp))
+        #testing.append(tmp)
 
     print np.array(dictionary).shape
     feature = np.array([[0.0] * len(dictionary)])
@@ -51,7 +57,7 @@ def training(data, cut_size=150, sample_size=10):
     for i in xrange(len(data)):
         print 'Create Feature ' + str(i)
         #feature.append(CreateDTWFeature(dictionary, testing[i]))
-        f = CreateDTWFeature(dictionary, testing[i])
+        f = CreateDTWFeature(dictionary, training_set[i])
         feature = np.insert(feature, len(feature), f, axis=0)
         #feature.extend(CreateDTWFeature(dictionary, testing[i]))
         #model_feature.extend(CreateDTWFeature(dictionary, testing[i]))
@@ -62,21 +68,16 @@ def training(data, cut_size=150, sample_size=10):
 
     
     for i in xrange(len(data)):
-        
-        slidewindow = 50
-        num = len(data[i]) / slidewindow
-        
-        tmp = Slide_Cut(FuzzyDirection(data[i]), cut_size, slidewindow, num)
-        testing_label.extend([i] * num)
-        testing_feature.extend(CreateDTWFeature(dictionary, tmp)) 
+        testing_feature.extend(CreateDTWFeature(dictionary, testing_set[i])) 
 
     #Testing
     svm = LinearSVC()
-    svm.fit(feature, labels)
+    svm.fit(feature, training_label)
 
     for i in range(len(testing_feature)): 
         if svm.predict(testing_feature[i]) == testing_label[i]:
             correct += 1
+
     return feature, labels, float(correct) / len(testing_feature)
     #return feature, float(correct) / len(testing_feature)
     #return feature
@@ -193,6 +194,23 @@ def Kmeans(data, sample_size):
     kmeans.fit(data)
 
     return kmeans.labels_, kmeans.cluster_centers_
+
+def Slide_Cut_Rand(data, size):
+    chunks = []
+    start = 0
+    max_idx = len(data[0]) - size
+    all_idx = np.random.choice(xrange(max_idx), int(0.8*max_idx), replace=False)
+    train_idx = np.random.choice(all_idx, int(0.8*len(all_idx)), replace=False)
+    test_idx = list(set(all_idx) - set(train_idx))
+    print len(all_idx), len(train_idx), len(test_idx)
+
+    training_set = []
+    testing_set = []
+    for idx in train_idx:
+        training_set.append(data[0][idx:idx+size])
+    for idx in test_idx:
+        testing_set.append(data[0][idx:idx+size])
+    return np.array(training_set), np.array(testing_set)
 
 def Slide_Cut(data, size, slidewindow, num):
     chunks = []
