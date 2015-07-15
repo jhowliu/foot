@@ -1,6 +1,5 @@
 import sys
-sys.path.append('./lib/')
-from Envelope import envelope
+sys.path.append('/Users/Terry/Work/foot/lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from mlpy import dtw_std as dtw
@@ -24,17 +23,30 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
+def build_pca(data):
+    pca = PCA(n_components=1)
+    tmp = np.array([data['Axis1'], data['Axis2'], data['Axis3']]).T
+    pca.fit(tmp)
+    return pca
+
 def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0.8):
     trainning = {'data': [], 'label': []}
 
     trainning_features = []
     dictionary = []
 
+    pca_data = pd.DataFrame(columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6', 'Time', 'Label'])
+    for i in xrange(len(train_data)):
+        pca_data = pca_data.append(train_data[i])
+    pca_model = build_pca(pca_data)
+
     # Fuzzy the direction and create the trainning data
     for i in xrange(len(train_data)):
         print 'Number of records: ' + str(len(train_data[i]))
-        
-        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        now_data = np.array([train_data[i]['Axis1'], train_data[i]['Axis2'], train_data[i]['Axis3']]).T
+        transform_data = pca_model.transform(now_data)
+        transform_data.resize(len(transform_data)) 
+        tmp = Slide_Cut(transform_data, cut_size, slide_size)
         sample_size = int(len(tmp) * sample_ratio)
         trainning['data'].extend(tmp)
         trainning['label'].extend([i]*len(tmp))
@@ -42,19 +54,34 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
 
     print 'Create Features'
     trainning_features = CreateDTWFeature(dictionary, trainning['data'])
+    print 'Finishing train features'
     #trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
     #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
 
-    return trainning_features, trainning['label'], dictionary
+    return trainning_features, trainning['label'], dictionary, pca_model
 
-def Test_Preprocessing(test_data, dictionary):
-    tmp = FuzzyDirection(test_data)[0]
-    testing_features = CreateDTWFeature(dictionary, tmp)
+def Test_Preprocessing(test_data, dictionary, pca_model):
+    #print test_data
+    testing_features = [] 
+    now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
+    transform_data = pca_model.transform(now_data)
+    transform_data.resize(len(transform_data))
 
-    print "Finishing Testing Feature"
+    
+    #print 'tmp: ', tmp[0]
+    testing_features = CreateDTWFeature(dictionary, transform_data)[0]
+    #print testing_features
+    #print testing_features, len(testing_features[0])
+    #print len(testing_features)
+    #print "Finishing Testing Feature"
 
     return testing_features
 
+def Predicting(model, test_data, dictionary, pca_model):
+    testing_features = Test_Preprocessing(test_data, dictionary, pca_model)
+    #print testing_features, testing_features.shape
+    predicted_label = model.predict(testing_features)
+    return predicted_label
 '''
 # Return the trainning feature
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
@@ -149,10 +176,7 @@ def Evaluation(model, testing_features, testing_labels):
     print acc
     return acc
 
-def Predicting(model, test_data, dictionary):
-    testing_features = Test_Preprocessing(test_data, dictionary)
-    predicted_label = model.predict(testing_features)
-    return predicted_label
+
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -216,6 +240,7 @@ def Ploting2D(data, n_dimension=2):
 
 def FuzzyDirection(data):
     pca = PCA(n_components=1)
+    
     tmp = np.array([data['Axis1'], data['Axis2'], data['Axis3']])
 
     return pca.fit_transform(tmp.T).T
@@ -271,6 +296,7 @@ def Cut(data, n):
 
 # Return n-sized chucks
 
+
 '''
 def Cut(data, n):
     axis3_chunks = []
@@ -282,7 +308,6 @@ def Cut(data, n):
 
     return axis1_chunks, axis2_chunks, axis3_chunks
 '''
-
 
 def Load(filenames):
     data = []
