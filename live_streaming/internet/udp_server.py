@@ -39,11 +39,12 @@ def direct_to_model(raw_data):
             #print len(sent_data[sent_count]),len(buffer_data[buffer_length-1])
             sent_count += 1
             start_recieve = 1
-            if sent_count == 50:
+            if sent_count == cut_size*5-1:
                 print "start predict"
                 testing_data = pd.DataFrame(sent_data, columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 result = train.Predicting(model, testing_data, dictionary, pca_model)
-                sent_count = 0
+                buffer_data[:sent_count - cut_size] = buffer_data[cut_size:]
+                sent_count -= cut_size
                 start_recieve = 0
                 #print testing_data
                 print result
@@ -60,7 +61,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
 
 def start_server(name):
     print 'current ip address: ' + HOST
-    cut_size = 70
+    cut_size = 100
     buffer_length = 10
     buffer_data = np.zeros([buffer_length, 6])
     buffer_count = 0
@@ -68,6 +69,7 @@ def start_server(name):
     sent_count = 0
     start_recieve = 0
     
+    global cut_size
     global buffer_length
     global buffer_data
     global buffer_count

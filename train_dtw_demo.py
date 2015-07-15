@@ -60,16 +60,17 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
 
     return trainning_features, trainning['label'], dictionary, pca_model
 
-def Test_Preprocessing(test_data, dictionary, pca_model):
+def Test_Preprocessing(test_data, dictionary, pca_model, slide_size, cut_size):
     #print test_data
     testing_features = [] 
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
     transform_data = pca_model.transform(now_data)
     transform_data.resize(len(transform_data))
-
+    tmp = Slide_Cut(transform_data, cut_size, slide_size)
+    
     
     #print 'tmp: ', tmp[0]
-    testing_features = CreateDTWFeature(dictionary, transform_data)[0]
+    testing_features = CreateDTWFeature(dictionary, tmp)
     #print testing_features
     #print testing_features, len(testing_features[0])
     #print len(testing_features)
@@ -81,7 +82,12 @@ def Predicting(model, test_data, dictionary, pca_model):
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model)
     #print testing_features, testing_features.shape
     predicted_label = model.predict(testing_features)
-    return predicted_label
+    
+    voting = np.zeros(len(set(predicted_label)))
+    for i in set(a):
+        voting[i] = np.sum(predicted_label[predicted_label == i])
+    
+    return voting.tolist().index(voting.max())
 '''
 # Return the trainning feature
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
