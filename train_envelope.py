@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.svm import LinearSVC
 from sklearn.cluster import KMeans
-from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -23,78 +23,65 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
-# Return the trainning fe
-def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
+def Preprocessing(train_data, test_data, cut_size=100, slide_size=100, sample_ratio=0.8, num_std=1):
     trainning = {'data': [], 'label': []}
     testing   = {'data': [], 'label': []}
 
-    trainning_features = []
-    testing_features   = []
+    features = []
 
-    # Fuzzy the direction and create the trainning data
+    pca_models = []
+
+    idx = [0]
+    # Concate the trainning data
+    raw_data = np.zeros((1, 3))
+    for d, i in zip(test_data, xrange(len(test_data))):
+        idx.append(idx[i] + len(d))
+        raw_data = np.insert(raw_data, len(raw_data), d, axis=0)
+
+    raw_data = np.delete(raw_data[:, :3], 0, axis=0)
+
+    # Create the trainning data
     for i in xrange(len(train_data)):
         print 'Number of records: ' + str(len(train_data[i]))
-        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        tmp, model = FuzzyDirection(train_data[i])
+        pca_models.append(model)
+        #tmp = Alignment_Slide_Cut(tmp[0], cut_size, 1)
+        tmp = Slide_Cut(tmp[0], cut_size, slide_size)
+
         trainning['data'].extend(tmp)
         trainning['label'].extend([i]*len(tmp))
 
-    # Fuzzy the direction and create the testing data
     for i in xrange(len(test_data)):
         print 'Number of records: ' + str(len(test_data[i]))
-        tmp = Slide_Cut(FuzzyDirection(test_data[i])[0], cut_size, slide_size)
+        tmp, model = FuzzyDirection(test_data[i])
+        tmp = Slide_Cut(tmp[0], cut_size, slide_size)
+
         testing['data'].extend(tmp)
 
     print 'Create Features'
-    trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
-    testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
+    trainning['label'] = np.array(trainning['label'])
+    trainning['data'] = np.array(trainning['data'])
+    features = np.zeros((len(testing['data']), 1))
 
-    return trainning_features, testing_features, trainning['label']
+    print features.shape
 
-def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
-    training = {'data': [], 'label': []}
-    testing  = {'data': [], 'label': []}
+    for i in xrange(len(train_data)):
+        # Create data with sliding window
+        tmp = pca_models[i].transform(raw_data).T
+        chunks = np.zeros((1, cut_size))
+        for ix in xrange(len(idx[:-1])):
+            chunks = np.insert(chunks, len(chunks), Slide_Cut(tmp[0][idx[ix]:idx[ix+1]], cut_size, slide_size), axis=0)
+        chunks = np.delete(chunks, 0, axis=0)
+        print chunks.shape
 
+        f = envelope(trainning['label'][trainning['label'] == i], trainning['data'][trainning['label']==i], chunks, num_std)
+        features = np.insert(features, features.shape[1], f.T, axis=1)
 
-    print 'Size of sliding is ' + str(slide_size)
-    print 'Size of cutting is ' + str(cut_size)
-    # Create dictionary and testing data
-    for i in xrange(len(data)):
-        print 'Data records: ' + str(len(data[i]))
-        tmp = Slide_Cut(FuzzyDirection(data[i])[0], cut_size, slide_size)
-        print 'Length of data after sliding is ' + str(tmp.shape)
-        sample_size = int(len(tmp) * sample_ratio)
+    features = np.delete(features, 0, axis=1)
 
-        sample_idx, testing_idx = Sampling(tmp, sample_size)
-        #_, centers = Kmeans(tmp[sample_idx, :], int(sample_size/2))
-        #training['data'].extend(centers)
-        #training['label'].extend([i]*int(sample_size/2))
-        training['data'].extend(tmp[sample_idx])
-        training['label'].extend([i]*len(sample_idx))
+    print features.shape
 
-        testing['data'].extend(tmp[testing_idx, :])
-        testing['label'].extend([i]*len(testing_idx))
-
-
-    print 'Size of Codebook is ' + str(np.array(training['data']).shape)
-
-
-    # Create Features of training
-    print 'Create Features'
-    training_feature = envelope(training['label'], training['data'], training['data'], num_std)
-    testing_feature  = envelope(training['label'], training['data'], testing['data'], num_std)
-
-    print np.array(training_feature).shape
-    print np.array(testing_feature).shape
-
-    # Prediction
-    print 'Trainning'
-    # one against one
-    model = Trainning(training_feature, training['label']);
-
-    print 'Predicting'
-    acc = Evaluation(testing_feature, testing['label'])
-
-    return training_feature, training['label'], acc
+    return features, trainning['label']
 
 def Training(trainning_features, labels):
     print trainning_features.shape
@@ -110,20 +97,6 @@ def Evaluation(model, testing_features, testing_labels):
 def Predicting(model, testing_features):
     predicted_label = model.predict(testing_features)
     return predicted_label
-
-def _Ploting(data):
-    colors = ['r', 'g', 'b', 'm']
-    labels = ['label_1', 'label_2', 'label_3', 'label_4']
-    fig = plt.figure()
-
-    for d, i in zip(data, xrange(len(data))):
-        plt.plot(d[np.random.randint(len(d))], c=colors[i], label=labels[i])
-
-    plt.xlabel('1st_component')
-    plt.ylabel('2nd_component')
-
-    plt.legend()
-    plt.show()
 
 def Ploting3D(data, labels, n_dimension=3):
     pca = PCA(n_components = n_dimension)
@@ -146,36 +119,12 @@ def Ploting3D(data, labels, n_dimension=3):
     plt.legend(scatterpoints=1, ncol=3)
     plt.show()
 
-def Ploting2D(data, n_dimension=2):
-    pca = PCA(n_components = n_dimension)
-    colors = ['r', 'g', 'b', 'm']
-    labels = ['label_1', 'label_2', 'label_3', 'label_4']
-    fig = plt.figure()
-
-    idx = [0, len(data[0])]
-    combined = np.array(data[0])
-
-    # Combined all data
-    for i in xrange(1, len(data)):
-        combined = np.insert(combined, len(combined), data[i], axis=0)
-        idx.append(idx[i]+len(data[i]))
-
-    combined = pca.fit_transform(combined)
-
-    for i in xrange(len(data)):
-        plt.plot(combined[idx[i]:idx[i+1], 0], combined[idx[i]:idx[i+1], 1], colors[i]+'o', markersize=8, label=labels[i])
-
-    plt.xlabel('1st_component')
-    plt.ylabel('2nd_component')
-
-    plt.legend(numpoints=1)
-    plt.show()
-
 def FuzzyDirection(data):
     pca = PCA(n_components=1)
     tmp = np.array([data['Axis1'], data['Axis2'], data['Axis3']])
+    pca.fit(tmp.T)
 
-    return pca.fit_transform(tmp.T).T
+    return pca.transform(tmp.T).T, pca
 
 # return index of n-sized samples as dictionary
 def Sampling(data, sample_size):
@@ -191,6 +140,20 @@ def Kmeans(data, sample_size):
     kmeans.fit(data)
 
     return kmeans.labels_, kmeans.cluster_centers_
+
+# Alignment Cutting
+def Alignment_Slide_Cut(data, cut_size, slide_size):
+    max_bound = len(data) - cut_size
+    bound = np.mean(data) + 1.7*np.std(data)
+
+    # Get the position of peak which is lower than cut_size
+    peak_idx = np.where(data > bound)[0][np.where(np.where(data > bound)[0] < max_bound)[0]]
+    print peak_idx.shape
+    indicies = [peak_idx[i] for i in xrange(0, peak_idx.shape[0], slide_size)]
+
+    chunks = map(lambda idx: data[idx:idx+cut_size], indicies)
+
+    return np.array(chunks[:-1])
 
 # Cut timeseries by Slide Window
 def Slide_Cut(data, cut_size, slide_size):
@@ -216,21 +179,8 @@ def Cut(data, n):
     for idx in xrange(0, len(data[0]), n):
         chunks.append(data[0][idx: idx+n])
 
-
     return np.array(chunks[:-1])
 
-# Return n-sized chucks
-'''
-def Cut(data, n):
-    axis3_chunks = []
-
-    for idx in xrange(0, len(data), n):
-        axis1_chunks.append(list(data['Axis1'][idx:idx+n]))
-        axis2_chunks.append(list(data['Axis2'][idx:idx+n]))
-        axis3_chunks.append(list(data['Axis3'][idx:idx+n]))
-
-    return axis1_chunks, axis2_chunks, axis3_chunks
-'''
 def Load(filenames):
     data = []
     for name in filenames:
@@ -243,7 +193,6 @@ if __name__ == '__main__':
     if len(sys.argv) < 5:
         print 'python <python file> [filename1] [filename2] [filename3] [filename4]'
     name = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]]
-    
 
     data = Load(name)
     acc = []
