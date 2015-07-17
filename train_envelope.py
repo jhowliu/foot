@@ -23,7 +23,7 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
-def Preprocessing(train_data, test_data, cut_size=100, slide_size=100, sample_ratio=0.8, num_std=1):
+def Preprocessing(train_data, test_data, num_std, cut_size=100, slide_size=100, sample_ratio=0.8):
     trainning = {'data': [], 'label': []}
     testing   = {'data': [], 'label': []}
 
@@ -33,7 +33,7 @@ def Preprocessing(train_data, test_data, cut_size=100, slide_size=100, sample_ra
 
     idx = [0]
     # Concate the trainning data
-    raw_data = np.zeros((1, 3))
+    raw_data = np.zeros((1, 8))
     for d, i in zip(test_data, xrange(len(test_data))):
         idx.append(idx[i] + len(d))
         raw_data = np.insert(raw_data, len(raw_data), d, axis=0)
@@ -72,9 +72,8 @@ def Preprocessing(train_data, test_data, cut_size=100, slide_size=100, sample_ra
         for ix in xrange(len(idx[:-1])):
             chunks = np.insert(chunks, len(chunks), Slide_Cut(tmp[0][idx[ix]:idx[ix+1]], cut_size, slide_size), axis=0)
         chunks = np.delete(chunks, 0, axis=0)
-        print chunks.shape
 
-        f = envelope(trainning['label'][trainning['label'] == i], trainning['data'][trainning['label']==i], chunks, num_std)
+        f = envelope(trainning['label'][trainning['label'] == i], trainning['data'][trainning['label']==i], chunks, num_std[i])
         features = np.insert(features, features.shape[1], f.T, axis=1)
 
     features = np.delete(features, 0, axis=1)
@@ -101,7 +100,6 @@ def Predicting(model, testing_features):
 def Ploting3D(data, labels, n_dimension=3):
     pca = PCA(n_components = n_dimension)
     colors = ['r', 'g', 'b', 'm', 'k']
-    #labels_text = ['label_0', 'label_1', 'label_2', 'label_3', 'label_4']
     labels_text = ['Jhow', 'Terry', 'Tsai', 'Terry']
     labels = np.array(labels)
     fig = plt.figure()
@@ -109,6 +107,7 @@ def Ploting3D(data, labels, n_dimension=3):
 
     tmp = pca.fit_transform(data)
     print tmp.shape
+    print np.unique(labels)
 
     map(lambda i: ax.scatter(tmp[labels==i, 0], tmp[labels==i, 1], tmp[labels==i, 2], label=labels_text[i], c=colors[i], marker='o', s=55), xrange(len(np.unique(labels))))
 
@@ -144,16 +143,32 @@ def Kmeans(data, sample_size):
 # Alignment Cutting
 def Alignment_Slide_Cut(data, cut_size, slide_size):
     max_bound = len(data) - cut_size
-    bound = np.mean(data) + 1.7*np.std(data)
+    bound = np.mean(data) + 2*np.std(data)
 
     # Get the position of peak which is lower than cut_size
     peak_idx = np.where(data > bound)[0][np.where(np.where(data > bound)[0] < max_bound)[0]]
-    print peak_idx.shape
+
+    print peak_idx
+
     indicies = [peak_idx[i] for i in xrange(0, peak_idx.shape[0], slide_size)]
 
     chunks = map(lambda idx: data[idx:idx+cut_size], indicies)
 
-    return np.array(chunks[:-1])
+    return np.array(chunks[:-1]), peak_idx
+
+def ConvertToAligmentCSV(data, cut_size):
+    csvtext = ['Jhow_test.csv', 'Terry.csv', 'Tsai.csv']
+
+    for i in xrange(len(data)):
+        print data[i].shape
+        principle, pca = FuzzyDirection(data[i])
+        _, indicies = Alignment_Slide_Cut(principle[0], cut_size, 1)
+        df = pd.DataFrame()
+        for idx in indicies:
+            df = df.append(data[i].loc[idx:idx+cut_size-1])
+        df.to_csv(csvtext[i], index=False)
+
+    print 'Convert Completed'
 
 # Cut timeseries by Slide Window
 def Slide_Cut(data, cut_size, slide_size):

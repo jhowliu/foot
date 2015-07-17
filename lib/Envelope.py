@@ -43,7 +43,9 @@ def envelope(train_label, train_data, test_data, num_std):
     #print std_train
 
     # For 1, 0, -1 initialization
+    '''
     envelope_data = np.zeros([s_test[0], s_test[1] * s_label])
+
     for cnt, idx in zip(xrange(s_label), xrange(0, s_label*s_test[1], s_test[1])):
         # 1 
         envelope_data[:, idx:idx+s_test[1]] = envelope_data[:, idx:idx+s_test[1]] + (test_data > mean_train[cnt] + num_std * std_train[cnt]) * 1
@@ -61,7 +63,7 @@ def envelope(train_label, train_data, test_data, num_std):
         envelope_data[:, (count)*3] = s_test[1] - num_one - num_minus
         envelope_data[:, (count)*3 + 1] = num_one
         envelope_data[:, (count)*3 + 2] = num_minus
-    '''
+
     return envelope_data
 
 if __name__ == '__main__':
