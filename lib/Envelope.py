@@ -1,18 +1,5 @@
 import numpy as np
 
-def build_feature(mean_train, std_train, test_data, num_std):
-    feature = np.zeros([len(mean_train), len(test_data)])
-    for i in range(len(mean_train)):
-        #Upper than envelope
-        feature[i][test_data > mean_train[i] + num_std * std_train[i]] = 1
-        #Lower than envelope
-        feature[i][test_data < mean_train[i] + num_std * std_train[i]] = -1
-
-    feature = feature.reshape([1,len(mean_train)*len(test_data)])
-    feature.resize(len(mean_train)*len(test_data))
-    #print feature
-    return feature
-
 def envelope(train_label, train_data, test_data, num_std):
     envelope_data = []
     unique_label = set(train_label)
@@ -36,20 +23,14 @@ def envelope(train_label, train_data, test_data, num_std):
         # Compute the std
         std_train[i][:len(now_label_data[0])]  = np.std(now_label_data, axis=0)
 
-
-    #print "MEAN"
-    #print mean_train
-    #print "STD"
-    #print std_train
-
     # For 1, 0, -1 initialization
     '''
     envelope_data = np.zeros([s_test[0], s_test[1] * s_label])
 
     for cnt, idx in zip(xrange(s_label), xrange(0, s_label*s_test[1], s_test[1])):
-        # 1 
+        # 1
         envelope_data[:, idx:idx+s_test[1]] = envelope_data[:, idx:idx+s_test[1]] + (test_data > mean_train[cnt] + num_std * std_train[cnt]) * 1
-        # -1 
+        # -1
         envelope_data[:, idx:idx+s_test[1]] = envelope_data[:, idx:idx+s_test[1]] +(test_data < mean_train[cnt] - num_std * std_train[cnt]) * -1
 
     # For counting initialization
