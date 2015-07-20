@@ -44,7 +44,7 @@ def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ra
  
     # Fuzzy the direction and create the trainning data
     for i in xrange(len(train_data)):
-        print 'Number of records: ' + str(len(train_data[i]))
+        #print 'Number of records: ' + str(len(train_data[i]))
         now_data = np.array([train_data[i]['Axis1'], train_data[i]['Axis2'], train_data[i]['Axis3']]).T
         transform_data = pca_model.transform(now_data)
         transform_data.resize(len(transform_data)) 
@@ -55,7 +55,7 @@ def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ra
         dictionary.extend(Kmeans(tmp, sample_size))
     # Fuzzy the direction and create the testing data
     for i in xrange(len(test_data)):
-        print 'Number of records: ' + str(len(test_data[i]))
+        #print 'Number of records: ' + str(len(test_data[i]))
         #tmp = Cut(FuzzyDirection(test_data[i])[0], cut_size)[:-1]
         
         now_data = np.array([test_data[i]['Axis1'], test_data[i]['Axis2'], test_data[i]['Axis3']]).T
@@ -118,9 +118,9 @@ def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
 
     return training_feature, training['label'], acc
 
-def Training(trainning_features, labels):
+def Training(trainning_features, labels, C=1.0):
     print trainning_features.shape
-    model = LinearSVC()
+    model = LinearSVC(C=C)
     model.fit(trainning_features, labels)
 
     return model
@@ -309,12 +309,15 @@ if __name__ == '__main__':
 
 '''
     out = open('dtw_terry_slide_50.csv', 'w')
-    for cut_size in range(10,110,10):
-        training_feature, testing_feature, labels = Preprocessing(data[:-1], [data[-1]], cut_size=cut_size, slide_size=50)
-        model = Training(np.array(training_feature), labels)
-        out.write(str(cut_size) + ',' + str(Evaluation(model, testing_feature, [1]*len(testing_feature))) + '\n')
-        tmp = np.insert(training_feature, len(training_feature), testing_feature, axis=0)
-        tmp_labels = labels
-        tmp_labels.extend([3] * len(testing_feature))
-        #Ploting3D(tmp, tmp_labels)
+    for C in [0.01,0.1]:
+        print "C: ", C
+        for cut_size in range(10,110,10):
+            training_feature, testing_feature, labels = Preprocessing(data[:-1], [data[-1]], cut_size=cut_size, slide_size=50)
+            model = Training(np.array(training_feature), labels, C)
+            print "cut_size: ",cut_size
+            out.write(str(cut_size) + ',' + str(Evaluation(model, testing_feature, [0]*len(testing_feature))) + '\n')
+            tmp = np.insert(training_feature, len(training_feature), testing_feature, axis=0)
+            tmp_labels = labels
+            tmp_labels.extend([3] * len(testing_feature))
+            #Ploting3D(tmp, tmp_labels)
     print acc

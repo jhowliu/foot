@@ -24,37 +24,96 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
     print len(testing)
     return testing
 
+def build_pca(data):
+    pca = PCA(n_components=1)
+    tmp = np.array([data['Axis1'], data['Axis2'], data['Axis3']]).T
+    pca.fit(tmp)
+    return pca
+
 # Return the trainning fe
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
     trainning = {'data': [], 'label': []}
     testing   = {'data': [], 'label': []}
 
-    trainning_features = []
-    testing_features   = []
+    trainning_features = np.zeros([])
+    testing_features   = np.array([])
     dictionary = []
     train_label = []
-
+    pca_model = []
+    env_sample_size = []
+    totalsize = []
+    pca_data = pd.DataFrame(columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6', 'Time', 'Label'])
+    for i in xrange(len(train_data)):
+        pca_data = pca_data.append(train_data[i])
+    
+    for i in xrange(len(train_data)):
+        pca_model.append(build_pca(train_data[i]))
+        
     # Fuzzy the direction and create the trainning data
     for i in xrange(len(train_data)):
         print 'Number of records: ' + str(len(train_data[i]))
-        
-        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
+        now_data = np.array([train_data[i]['Axis1'], train_data[i]['Axis2'], train_data[i]['Axis3']]).T
+        transform_data = pca_model[i].transform(now_data)
+        transform_data.resize(len(transform_data)) 
+        tmp = Alignment_Slide_Cut(transform_data, cut_size, slide_size)
+        print "now_data:", len(now_data), "len: ",len(tmp)
+        totalsize.append(len(tmp))
         sample_size = int(len(tmp) * sample_ratio)
+        #print sample_size
+        env_sample_size.append(sample_size)
         trainning['data'].extend(tmp)
         trainning['label'].extend([i]*len(tmp))
         dictionary.extend(Kmeans(tmp, sample_size))
         train_label.extend([i] * sample_size)
+    #print "dic: ", len(dictionary)
+    #print env_sample_size
+    '''
     # Fuzzy the direction and create the testing data
     for i in xrange(len(test_data)):
         print 'Number of records: ' + str(len(test_data[i]))
-        tmp = Slide_Cut(FuzzyDirection(test_data[i])[0], cut_size, slide_size)
-        testing['data'].extend(tmp)
-
+        now_data = np.array([test_data[i]['Axis1'], test_data[i]['Axis2'], test_data[i]['Axis3']]).T
+        transform_data = pca_model.transform(now_data)
+        transform_data.resize(len(transform_data))
+        tmp = Slide_Cut(transform_data, cut_size, slide_size)
+        test_slide_size = len(tmp)
+    '''
+    
+    test_slide_size = ((len(test_data[0]) - cut_size) / slide_size) + 1
+    
+    trainning_features = np.zeros([sum(totalsize), cut_size * len(train_data)])
+    
+    testing_features   = np.zeros([test_slide_size, cut_size * len(train_data)])
+    print testing_features.shape
     print 'Create Features'
     #trainning_features = CreateDTWFeature(dictionary, trainning['data'])
     #testing_features = CreateDTWFeature(dictionary, testing['data'])
-    trainning_features = envelope(train_label, dictionary, trainning['data'], num_std)
-    testing_features   = envelope(train_label, dictionary, testing['data'], num_std)
+    train_label = np.array(train_label)
+    dictionary = np.array(dictionary)
+    start = 0
+    for i in xrange(len(train_data)):
+        whole_tmp = []
+        for j in xrange(len(train_data)):
+            now_data = np.array([train_data[j]['Axis1'], train_data[j]['Axis2'], train_data[j]['Axis3']]).T
+            transform_data = pca_model[i].transform(now_data)
+            transform_data.resize(len(transform_data)) 
+            each_model_tmp = Alignment_Slide_Cut(transform_data, cut_size, slide_size)
+            print "now_data:", len(now_data), "len: ",len(each_model_tmp) 
+            whole_tmp.extend(each_model_tmp)
+        #tmp_env = envelope(train_label[train_label==i], dictionary[train_label == i], tmp, num_std)
+ 
+        #print tmp_env.shape, start+totalsize[i]
+        
+        print trainning_features[:,start:start+cut_size].shape, envelope(train_label[train_label==i], dictionary[train_label == i], whole_tmp, num_std).shape
+        trainning_features[:,start:start+cut_size] = envelope(train_label[train_label==i], dictionary[train_label == i], whole_tmp, num_std)
+        now_data = np.array([test_data[0]['Axis1'], test_data[0]['Axis2'], test_data[0]['Axis3']]).T
+        transform_data = pca_model[i].transform(now_data)
+        transform_data.resize(len(transform_data))
+        tmp = Slide_Cut(transform_data, cut_size, slide_size)
+        #print 'shit',tmp.shape, 'test', testing_features.shape
+        test = envelope(train_label[train_label==i], dictionary[train_label == i], tmp, num_std)
+        
+        testing_features[:,start:start+cut_size] = envelope(train_label[train_label==i], dictionary[train_label == i], tmp, num_std)
+        start += cut_size
 
     return trainning_features, testing_features, trainning['label']
 
@@ -227,6 +286,20 @@ def Slide_Cut_Rand(data, size, slidewindow, num):
         start += slidewindow
     return np.array(chunks)
 
+# Alignment Cutting
+def Alignment_Slide_Cut(data, cut_size, slide_size):
+  
+    max_bound = len(data) - cut_size
+    bound = np.mean(data) + np.std(data)
+
+    # Get the position of peak which is lower than cut_size
+    peak_idx = np.where(data > bound)[0][np.where(np.where(data > bound)[0] < max_bound)[0]]
+    indicies = [peak_idx[i] for i in xrange(0, peak_idx.shape[0], slide_size)]
+
+    chunks = map(lambda idx: data[idx:idx+cut_size], indicies)
+    print "(data, after_cut)", len(data), len(np.array(chunks[:-1]))
+    return np.array(chunks[:-1])
+
 def Cut(data, n):
     chunks = []
 
@@ -269,12 +342,13 @@ if __name__ == '__main__':
     f = []
     cut_s = []
     out = open('env_km_terry_slide_10.csv', 'w')
-    for cut_size in range(10,110,10):
+    for cut_size in range(10,100,10):
+        print cut_size
         trainning_features, testing_features, labels = Preprocessing(data[:-1],  [data[-1]], cut_size=cut_size, slide_size=50, num_std = 1.0)
         model = Training(np.array(trainning_features), labels)
         out.write(str(cut_size) + ',' + str(Evaluation(model, testing_features, [1]*len(testing_features))) + '\n')
-        tmp = np.insert(trainning_features, len(trainning_features), testing_features, axis=0)
-        tmp_labels = labels
-        tmp_labels.extend([3] * len(testing_features))
-        Ploting3D(tmp, tmp_labels)
+        #tmp = np.insert(trainning_features, len(trainning_features), testing_features, axis=0)
+        #tmp_labels = labels
+        #tmp_labels.extend([3] * len(testing_features))
+        #Ploting3D(tmp, tmp_labels)
     print acc

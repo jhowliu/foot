@@ -55,6 +55,7 @@ def envelope(train_label, train_data, test_data, num_std):
         envelope_data[:, (count)*3 + 1] = num_one
         envelope_data[:, (count)*3 + 2] = num_minus
     '''
+    #print std_train
     return envelope_data
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 import SocketServer
+import socket as sk
 import json
 import sys
 import numpy as np
@@ -16,6 +17,7 @@ BUFFER_SIZE = 512
 
 def direct_to_model(raw_data):
     bound = 0.4
+    global clientsocket
     global cut_coef
     global slide_size
     global cut_size
@@ -28,6 +30,8 @@ def direct_to_model(raw_data):
     global model
     global dictionary
     global first
+    slipper_no = 1
+    global counter
     if buffer_count < buffer_length:
         print 'collect buffer data'
         buffer_data[buffer_count] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
@@ -36,33 +40,54 @@ def direct_to_model(raw_data):
     else:
         mean = np.mean(buffer_data[:,0])
         now_data = abs(float(raw_data['FFA2']))
-        #print 'collect prediction data'
+        #Over bound and start receive the data
         if ((abs(now_data-mean) > bound) | start_recieve == 1):
-            #print "start receive"
+            
+            #Save the data to buffer
+            #buffer_data[:buffer_length-1] = buffer_data[1:buffer_length]
+            #buffer_data[buffer_length-1] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
+            
+            #Record the data for prediction model
+            sent_data[sent_count] = [float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])]
+            #print len(sent_data[sent_count]),len(buffer_data[buffer_length-1])
+            
+            #Record the data index
+            sent_count += 1
+            start_recieve = 1
+            
             if first == 1:
                 print "over bound"
                 first = 0
-            buffer_data[:buffer_length-1] = buffer_data[1:buffer_length]
-            buffer_data[buffer_length-1] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
-            sent_data[sent_count] = [float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])]
-            #print len(sent_data[sent_count]),len(buffer_data[buffer_length-1])
-            sent_count += 1
-            start_recieve = 1
-
 
             if sent_count == cut_size*cut_coef-1:
                 print "start predict"
                 testing_data = pd.DataFrame(sent_data, columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 result = train.Predicting(model, testing_data, dictionary, pca_model, cut_size, predict_slide_size)
-                #print "sent-count: ", sent_count - cut_size,"cut_size: ", cut_size
+                
+                #Shift the sent_data about 1*cut_size to record the following data
                 sent_data[:sent_count - cut_size+1] = sent_data[cut_size:]
                 sent_count -= cut_size
+
                 start_recieve = 0
                 first = 1
-                #print testing_data
+                
+                message = str(slipper_no) + ',' + str(result) + '\n'
+                clientsocket.sendall(message)
                 print result
-            #print mean, now_data
-            #print raw_data['FFA2'], raw_data['FFA3'], raw_data['FFA4'], raw_data['FFA6'], raw_data['FFA7'], raw_data['FFA8']
+        
+        else:
+            print counter,"stop"
+            counter += 1
+            if counter == 50:
+                counter = 0
+                print "send stop"
+                message = str(slipper_no)+'\n' 
+                clientsocket.sendall(message)
+
+            
+            
+            #Reach the num of records 
+            
 
 
 class UDPHandler(SocketServer.BaseRequestHandler):
@@ -74,6 +99,8 @@ class UDPHandler(SocketServer.BaseRequestHandler):
 
 def start_server(name):
     print 'current ip address: ' + HOST
+    Server_Host = '140.118.155.161'
+    Server_Port = 15712
     cut_coef = 4
     cut_size = 60
     slide_size = 30
@@ -85,7 +112,14 @@ def start_server(name):
     sent_count = 0
     start_recieve = 0
     first = 1
+    counter = 0
+    clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     
+    clientsocket.connect((Server_Host, Server_Port))
+    print "Connect to server: "+ Server_Host
+    
+    global counter   
+    global clientsocket
     global first 
     global cut_coef
     global cut_size
