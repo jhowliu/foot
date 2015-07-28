@@ -8,8 +8,6 @@ import pandas as pd
 __author__ = 'maeglin89273'
 
 import socket as sk
-sys.path.append('/Users/Terry/Work/foot/')
-import train_dtw_demo as train
 HOST = '192.168.0.2'
 PORT = 3070
 
@@ -53,13 +51,13 @@ def direct_to_model(raw_data):
                 print "over bound"
                 first = 0
 
-            if sent_count == cut_size-1:
+            if sent_count == cut_size+1:
                 print "finish collecting data"
-                sent_data = sent_data.T        
-                outname = "slipper_data_"+str()+".csv"
-                out = open(outname, 'wb')
+                out_data = sent_data.T        
+                outname = "slipper_data_"+str(user_counter)+".csv"
+                out = open("live_data/"+outname, 'wb')
                 writer = csv.writer(out)
-                writer.writerows(sent_data)
+                writer.writerows(out_data)
                 out.close()
                 print "New Data " + outname + " finished"
 
@@ -81,7 +79,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         direct_to_model(raw_data)
 
 
-def start_server():
+def start_server(counter):
     print 'current ip address: ' + HOST
     global first 
     global cut_coef
@@ -99,11 +97,11 @@ def start_server():
     buffer_length = 10
     buffer_data = np.zeros([buffer_length, 6])
     buffer_count = 0
-    sent_data = np.zeros([cut_size*cut_coef,6])
-    sent_count = 0
+    sent_data = np.zeros([cut_size+1,6])
+    sent_count = 1
     start_recieve = 0
     first = 1
-    user_counter = 1
+    user_counter = counter
     
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
     server.serve_forever()
@@ -111,6 +109,8 @@ def start_server():
     
 
 if __name__ == '__main__':
-    
-    
-    start_server()
+    if len(sys.argv) != 2:
+        print "<Usage: <now_user_number>>"
+        exit()
+    user_counter = int(sys.argv[1])
+    start_server(user_counter)
