@@ -74,7 +74,7 @@ def direct_to_model(raw_data):
                 clientsocket.sendall(message)
         else:
             counter += 1
-            if counter == 100:
+            if counter == 70:
                 counter = 0
                 message = str(slipper_no) + '\n'
                 clientsocket.sendall(message)
@@ -110,7 +110,7 @@ def start_server(name, member_num):
     
 
     print 'current ip address: ' + HOST
-    Server_Host = '140.118.155.161'
+    Server_Host = '127.0.0.1'
     Server_Port = 15712
     cut_coef = 4
     cut_size = 50
@@ -130,7 +130,8 @@ def start_server(name, member_num):
     clientsocket.connect((Server_Host, Server_Port))
     
     data = train.Load(name)
-    training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.5)
+    training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.8)
+    train.Ploting3D(training_features, labels)
     print "Predicting"
     model = train.Training(np.array(training_features), labels)
 

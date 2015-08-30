@@ -1,3 +1,4 @@
+import serial
 import SocketServer
 import socket as sk
 import json
@@ -14,7 +15,8 @@ HOST = '192.168.0.2'
 PORT = 3070
 
 BUFFER_SIZE = 512
-
+port = "/dev/cu.usbserial-AJ038LU9"
+ser = serial.Serial(port, 9600)
 
 def direct_to_model(raw_data):
     bound = 0.4
@@ -34,7 +36,7 @@ def direct_to_model(raw_data):
     global counter
 
     slipper_no = int(raw_data['Label'])
-    #print raw_data['FFA2'], raw_data['FFA3'], raw_data['FFA4']
+
     if buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
         buffer_data_all[int(slipper_no)][buffer_count[slipper_no]] = np.abs([float(raw_data['FFA2']), float(raw_data['FFA3']), float(raw_data['FFA4']), float(raw_data['FFA6']), float(raw_data['FFA7']), float(raw_data['FFA8'])])
@@ -65,7 +67,6 @@ def direct_to_model(raw_data):
             if sent_count[slipper_no] == cut_size*cut_coef-1:
                 print "start predict"
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
-                #print testing_data
                 result = train.Predicting(model, testing_data, dictionary, pca_model, cut_size, predict_slide_size)
                 
                 #Shift the sent_data about 1*cut_size to record the following data
@@ -75,10 +76,22 @@ def direct_to_model(raw_data):
                 start_recieve[slipper_no] = 0
 
                 first[slipper_no] = 1
-                print result 
-                #message = str(slipper_no) + ',' + str(result) + '\n'
+                    
+                #print result
+                
+                message = '$' + str(slipper_no) + ',' + str(result) + '\n'
+                ser.write(message)
+                print message
                 #clientsocket.sendall(message)
-            
+        #else:
+            #print counter, "stop"
+            #counter += 1
+            #if counter == 50:
+                #counter = 0
+                #print "send_stop"
+                #message = str(slipper_no) + '\n'
+                #ser.write(message)
+                #clientsocket.sendall(message)
     #Reach the num of records 
             
 
@@ -96,8 +109,10 @@ class UDPHandler(SocketServer.BaseRequestHandler):
 
 def start_server(name, member_num):
     print 'current ip address: ' + HOST
+    Server_Host = '140.118.155.161'
+    Server_Port = 15712
     cut_coef = 4
-    cut_size = 70
+    cut_size = 50
     slide_size = 30
     predict_slide_size = 20
     buffer_length = 10
@@ -110,6 +125,7 @@ def start_server(name, member_num):
     counter = 0
     
     
+    global clientsocket
     global counter   
     global first 
     global cut_coef
@@ -121,8 +137,14 @@ def start_server(name, member_num):
     global sent_data_all
     global sent_count
     global start_recieve
+    
+    clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+    #clientsocket.connect((Server_Host, Server_Port))
+    print "Connect to server: " + Server_Host
+    
     data = train.Load(name)
-    training_features, labels, dictionary,pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.8)
+    training_features, labels, dictionary,pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.5)
+    
     train.Ploting3D(training_features, labels)
     print "Predicting"
     model = train.Training(np.array(training_features), labels)
@@ -137,17 +159,9 @@ def start_server(name, member_num):
     global model
     global pca_model
     
+    
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
     server.serve_forever()
-#    try:
-#        thread.start_new_thread(start_multithread, ('thread_1', 'Jhow'))
-#        thread.start_new_thread(start_multithread, ('thread_2', 'Terry'))
-#        thread.start_new_thread(start_multithread, ('thread_3', 'Mag'))
-#    except:
-#        print "Unable to start thread"
-#    while 1:
-#        pass
-#    thread.start_new_thread(start_multithread, ('thread_2'))
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
