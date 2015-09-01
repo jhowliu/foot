@@ -59,7 +59,7 @@ def direct_to_model(raw_data):
                 print "start predict"
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 
-                result = train.Predicting(model, testing_data, dictionary, pca_model, cut_size, predict_slide_size)
+                result = train.Predicting(model[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
                 
                 #Shift the sent_data about 1*cut_size to record the following data
                 sent_data_all[slipper_no][:sent_count[slipper_no] - cut_size+1] = sent_data_all[slipper_no][cut_size:]
@@ -135,7 +135,15 @@ def start_server(name, member_num):
     training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.8)
     train.Ploting3D(training_features, labels)
     print "Predicting"
-    model = train.Training(np.array(training_features), labels)
+    model = []
+    for i in np.unique(labels):
+        print i
+        model.append(train.Training(np.array(training_features)[labels == i], np.array(labels)[labels == i]))
+        #print len(np.array(training_features)[labels == i][0]), len(np.array(training_features)[labels == i])
+        print labels == i
+        print np.array(training_features)[labels == i][:2].shape
+        if i == 0:
+            print model[i].predict(np.array(training_features)[labels == i][:2])
     
     
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
