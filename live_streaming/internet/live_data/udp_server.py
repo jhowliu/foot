@@ -10,7 +10,7 @@ PORT = 3070
 
 BUFFER_SIZE = 512
 
-filename = 'Terry.csv'
+filename = 'frank2.csv'
 
 out = open(filename, 'a')
 

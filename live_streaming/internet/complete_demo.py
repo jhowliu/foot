@@ -10,7 +10,7 @@ __author__ = 'maeglin89273'
 import socket as sk
 sys.path.append('/Users/Terry/Work/foot/')
 import train_dtw_demo as train
-HOST = '192.168.0.2'
+HOST = sk.gethostbyname(sk.gethostname())
 PORT = 3070
 
 BUFFER_SIZE = 512
@@ -131,11 +131,11 @@ def start_server(name, member_num):
     
     data = train.Load(name)
     training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.8)
-    train.Ploting3D(training_features, labels)
+    #train.Ploting3D(training_features, labels)
     print "Predicting"
     model = train.Training(np.array(training_features), labels)
 
-    
+    print sk.gethostbyname(sk.gethostname())
     server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
     server.serve_forever()
 
