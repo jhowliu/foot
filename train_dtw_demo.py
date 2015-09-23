@@ -4,7 +4,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from mlpy import dtw_std as dtw
 from sklearn.svm import LinearSVC
-from sklearn.svm import OneClassSVM
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier 
 import matplotlib.pyplot as plt
@@ -86,10 +85,14 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     
     voting = np.zeros(max(set(predicted_label))+1)
     print 'Max: ', max(set(predicted_label)), voting, set(predicted_label), predicted_label
-    if (sum(predicted_label == 1) > len(predicted_label)/2):
-        return 1
-    else:
-        return -1
+    for i in set(predicted_label):
+        voting[i] = np.sum(predicted_label == i)
+  
+    result = voting.tolist().index(voting.max())
+    if voting.max() <= (len(voting)/2):
+        result = -1
+    print "voting: ", voting
+    return result 
 '''
 # Return the trainning feature
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
@@ -174,8 +177,7 @@ def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
 
 def Training(trainning_features, labels):
     print trainning_features.shape
-    #model = LinearSVC()
-    model = OneClassSVM(tol=0.005)
+    model = LinearSVC()
     model.fit(trainning_features, labels)
 
     return model
