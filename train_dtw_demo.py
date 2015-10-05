@@ -49,6 +49,13 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
         tmp = Slide_Cut(transform_data, cut_size, slide_size)
         sample_size = int(len(tmp) * sample_ratio)
         trainning['data'].extend(tmp)
+        print len(tmp)
+        # for test
+        #if i == 0:
+        #    trainning['label'].extend([1] * len(tmp))
+        #else:
+        #    trainning['label'].extend([0] * len(tmp))
+        # for complete demo
         trainning['label'].extend([i]*len(tmp))
         dictionary.extend(Kmeans(tmp, sample_size))
 
@@ -92,7 +99,7 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     if voting.max() <= (len(voting)/2):
         result = -1
     print "voting: ", voting
-    return result 
+    return result
 '''
 # Return the trainning feature
 def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
@@ -175,10 +182,11 @@ def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
 
     return training_feature, training['label'], acc
 
-def Training(trainning_features, labels):
+def Training(trainning_features, labels, master_no, C = 1.0):
     print trainning_features.shape
+    now_labels = map(lambda x: 1 if x == master_no else 0, labels)
     model = LinearSVC()
-    model.fit(trainning_features, labels)
+    model.fit(trainning_features, now_labels)
 
     return model
 
@@ -325,7 +333,7 @@ def Load(filenames):
     for name in filenames:
         print 'Loading ' + name
         data.append(pd.read_csv(name))
-
+    
     return data
 
 if __name__ == '__main__':
