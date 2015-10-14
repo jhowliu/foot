@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/Terry/Work/foot/lib/')
+sys.path.append('/home/dmlab/Slipper/lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
@@ -70,11 +70,8 @@ def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     #print test_data
     testing_features = [] 
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
-    transform_data = pca_model.transform(now_data)
-    transform_data.resize(len(transform_data))
-    #tmp = Slide_Cut(transform_data, cut_size, slide_size)
     
-    _,tmp = splitSteps(test_data, test_data['Axis1'])
+    _, tmp = splitSteps(test_data, test_data['Axis1'])
     print "tmp_shape:",np.array(tmp).shape
     testing_features = CreateDTWFeature(dictionary, tmp)
 
@@ -94,14 +91,17 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
     #print testing_features, testing_features.shape
     print testing_features.shape
-    predicted_label = model.predict(testing_features)
+    try: 
+        predicted_label = model.predict(testing_features)
+    except:
+        return 0
     
     voting = np.zeros(max(set(predicted_label))+1)
     print 'Max: ', max(set(predicted_label)), voting, set(predicted_label), predicted_label
     for i in set(predicted_label):
         voting[i] = np.sum(predicted_label == i)
   
-    result = voting.tolist().index(voting.max())
+    result = voting.tolist().index(voting.max())+1
     if voting.max() <= (len(voting)/2):
         result = -1
     print "voting: ", voting

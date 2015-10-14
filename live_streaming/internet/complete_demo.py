@@ -8,7 +8,7 @@ import pandas as pd
 __author__ = 'maeglin89273'
 
 import socket as sk
-sys.path.append('/Users/Terry/Work/foot/')
+sys.path.append('/home/dmlab/Slipper/')
 import train_dtw_demo as train
 HOST = sk.gethostbyname(sk.gethostname())
 PORT = 3070
@@ -34,8 +34,10 @@ def direct_to_model(raw_data):
     global counter
 
     slipper_no = int(raw_data['Label'])
-
-    parsed = [float(x) for x in raw_data['FFA2'].split(',')]
+    try:
+        parsed = [float(x) for x in raw_data['FFA2'].split(',')]
+    except:
+        return
 
     if buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
