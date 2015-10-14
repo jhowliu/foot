@@ -2,6 +2,7 @@ import sys
 sys.path.append('/Users/Terry/Work/foot/lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 from mlpy import dtw_std as dtw
 from sklearn.svm import LinearSVC
 from sklearn.cluster import KMeans
@@ -43,10 +44,8 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
     # Fuzzy the direction and create the trainning data
     for i in xrange(len(train_data)):
         print 'Number of records: ' + str(len(train_data[i]))
-        now_data = np.array([train_data[i]['Axis1'], train_data[i]['Axis2'], train_data[i]['Axis3']]).T
-        transform_data = pca_model.transform(now_data)
-        transform_data.resize(len(transform_data)) 
-        tmp = Slide_Cut(transform_data, cut_size, slide_size)
+        _,tmp = splitSteps(train_data[i], train_data[i]['Axis1'])
+        #tmp = Slide_Cut(transform_data, cut_size, slide_size)
         sample_size = int(len(tmp) * sample_ratio)
         trainning['data'].extend(tmp)
         print len(tmp)
@@ -73,21 +72,28 @@ def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
     transform_data = pca_model.transform(now_data)
     transform_data.resize(len(transform_data))
-    tmp = Slide_Cut(transform_data, cut_size, slide_size)
+    #tmp = Slide_Cut(transform_data, cut_size, slide_size)
     
-    
-    #print 'tmp: ', tmp[0]
+    _,tmp = splitSteps(test_data, test_data['Axis1'])
+    print "tmp_shape:",np.array(tmp).shape
     testing_features = CreateDTWFeature(dictionary, tmp)
-    #print testing_features
-    #print testing_features, len(testing_features[0])
-    #print len(testing_features)
-    #print "Finishing Testing Feature"
 
-    return testing_features
+    return np.array(testing_features)
 
+def Multi_Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
+    #print test_data
+    testing_features = [] 
+    testing_labels = []
+    for i in range(len(test_data)):
+        _,tmp = splitSteps(test_data[i], test_data[i]['Axis1'])
+        testing_features.extend(CreateDTWFeature(dictionary, tmp))
+        testing_labels.extend([i] * len(tmp))
+
+    return testing_features, testing_labels
 def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
     #print testing_features, testing_features.shape
+    print testing_features.shape
     predicted_label = model.predict(testing_features)
     
     voting = np.zeros(max(set(predicted_label))+1)
@@ -185,9 +191,8 @@ def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
 def Training(trainning_features, labels, master_no, C = 1.0):
     print trainning_features.shape
     now_labels = map(lambda x: 1 if x == master_no else 0, labels)
-    model = LinearSVC()
+    model = LinearSVC(class_weight='auto')
     model.fit(trainning_features, now_labels)
-
     return model
 
 def Evaluation(model, testing_features, testing_labels):
@@ -212,7 +217,9 @@ def _Ploting(data):
     plt.show()
 
 def Ploting3D(data, labels, n_dimension=3):
-    pca = PCA(n_components = n_dimension)
+
+    #pca = PCA(n_components = n_dimension)
+    mds = MDS(n_components = n_dimension)
     colors = ['r', 'g', 'b', 'm', 'k']
     #labels_text = ['label_0', 'label_1', 'label_2', 'label_3', 'label_4']
     labels_text = ['Jhow', 'Terry', 'Tsai', 'Terry']
@@ -220,7 +227,8 @@ def Ploting3D(data, labels, n_dimension=3):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    tmp = pca.fit_transform(data)
+    #tmp = pca.fit_transform(data)
+    tmp = mds.fit_transform(np.array(data))
     print tmp.shape
 
     map(lambda i: ax.scatter(tmp[labels==i, 0], tmp[labels==i, 1], tmp[labels==i, 2], label=labels_text[i], c=colors[i], marker='o', s=55), xrange(len(np.unique(labels))))
@@ -313,7 +321,15 @@ def Cut(data, n):
 
     return np.array(chunks[:-1])
 
-# Return n-sized chucks
+def splitSteps(df, ts, threshold=0.5):
+    idx   = ts.loc[ts > threshold]
+    
+    diff = np.array(idx.index[1:]) - np.array(idx.index[:-1])
+    print diff
+    tmp = idx[[x & y for x, y in zip(diff != 1, diff > 10)]][:-1]
+    
+    
+    return tmp, map(lambda x:df.loc[xrange(tmp.index[x]-10, tmp.index[x]+20)]['Axis1'].reset_index(drop=True), xrange(0, len(tmp)))
 
 
 '''
