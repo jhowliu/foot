@@ -1,5 +1,6 @@
 import SocketServer
 import json
+import sys
 
 __author__ = 'maeglin89273'
 
@@ -12,8 +13,17 @@ PORT = 3070
 
 BUFFER_SIZE = 1024
 
+if len(sys.argv) > 1:
+    FILENAME = sys.argv[1]
+else:
+    exit()
+
+out = open(FILENAME, 'w')
+out.write('Axis1,Axis2,Axis3,Axis4,Axis5,Axis6\n')
+
 def direct_to_model(raw_data):
     print raw_data['FFA2']
+    out.write(raw_data['FFA2'] + '\n')
 
 class TCPHandler(SocketServer.BaseRequestHandler):
     def setup(self):
