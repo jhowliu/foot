@@ -64,14 +64,16 @@ def direct_to_model(raw_data):
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 
                 result = train.Predicting(model[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
-                
+               	
+		 
                 #Shift the sent_data about 1*cut_size to record the following data
                 sent_data_all[slipper_no][:sent_count[slipper_no] - cut_size+1] = sent_data_all[slipper_no][cut_size:]
                 sent_count[slipper_no] -= cut_size
                 start_recieve[slipper_no] = 0
 
                 first[slipper_no] = 1
-                
+                if result == 1:
+                    result = slipper_no + 1
                 print "The result of prediction: " + str(result)
                 #message = str(slipper_no) + ',' + str(result) + '\n'
                 #clientsocket.sendall(message)

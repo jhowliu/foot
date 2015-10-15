@@ -95,16 +95,18 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
         predicted_label = model.predict(testing_features)
     except:
         return 0
-    
-    voting = np.zeros(max(set(predicted_label))+1)
-    print 'Max: ', max(set(predicted_label)), voting, set(predicted_label), predicted_label
+    print "start voting."
+    voting = np.zeros(2)
     for i in set(predicted_label):
         voting[i] = np.sum(predicted_label == i)
-  
-    result = voting.tolist().index(voting.max())+1
-    if voting.max() <= (len(voting)/2):
+    
+    result = voting.tolist().index(voting.max())
+    print 'Max: ', voting, set(predicted_label), predicted_label, "Result:", result
+    if result == 0:
         result = -1
-    print "voting: ", voting
+    #if voting.max() <= (len(voting)/2):
+    #    result = -1
+    #print "voting: ", voting
     return result
 '''
 # Return the trainning feature
@@ -325,7 +327,7 @@ def splitSteps(df, ts, threshold=0.5):
     idx   = ts.loc[ts > threshold]
     
     diff = np.array(idx.index[1:]) - np.array(idx.index[:-1])
-    print diff
+    #print diff
     tmp = idx[[x & y for x, y in zip(diff != 1, diff > 10)]][:-1]
     
     
