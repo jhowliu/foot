@@ -12,15 +12,8 @@ PORT = 3070
 
 BUFFER_SIZE = 1024
 
-
 def direct_to_model(raw_data):
-    print raw_data
-
-def is_end(json_data):
-    #empty string OR eot, end of transimisson OR spaces
-    return not json_data or \
-    (len(json_data) == 1 and ord(json_data) == 4) or \
-    json_data.isspace()
+    print raw_data['FFA2']
 
 class TCPHandler(SocketServer.BaseRequestHandler):
     def setup(self):
@@ -30,13 +23,12 @@ class TCPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         while True:
             json_data = self.request.recv(BUFFER_SIZE)
-            if is_end(json_data):
-                break
 
             try:
                 raw_data = json.loads(json_data)
                 direct_to_model(raw_data)
             except ValueError:
+                print json_data
                 print ValueError
 
     def finish(self):
