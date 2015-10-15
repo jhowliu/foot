@@ -72,7 +72,7 @@ def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
     
     _, tmp = splitSteps(test_data, test_data['Axis1'])
-    print "tmp_shape:",np.array(tmp).shape
+
     testing_features = CreateDTWFeature(dictionary, tmp)
 
     return np.array(testing_features)

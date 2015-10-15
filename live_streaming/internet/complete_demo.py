@@ -10,7 +10,7 @@ __author__ = 'maeglin89273'
 import socket as sk
 sys.path.append('/home/dmlab/Slipper/')
 import train_dtw_demo as train
-HOST = sk.gethostbyname(sk.gethostname())
+HOST = "192.168.0.184"
 PORT = 3070
 
 BUFFER_SIZE = 512
@@ -50,8 +50,6 @@ def direct_to_model(raw_data):
         #Over bound and start receive the data
         if ((abs(now_data-mean) > bound) | start_recieve[slipper_no] == 1):
             #Record the data for prediction model
-            print "count:",sent_count[slipper_no]
-            print cut_size * cut_coef - 1
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
             sent_count[slipper_no] += 1
@@ -70,12 +68,11 @@ def direct_to_model(raw_data):
                 #Shift the sent_data about 1*cut_size to record the following data
                 sent_data_all[slipper_no][:sent_count[slipper_no] - cut_size+1] = sent_data_all[slipper_no][cut_size:]
                 sent_count[slipper_no] -= cut_size
-                print "shift:", sent_count[slipper_no]
                 start_recieve[slipper_no] = 0
 
                 first[slipper_no] = 1
                 
-                print result
+                print "The result of prediction: " + str(result)
                 #message = str(slipper_no) + ',' + str(result) + '\n'
                 #clientsocket.sendall(message)
         else:
@@ -118,7 +115,7 @@ def start_server(name, member_num):
     print 'current ip address: ' + HOST
     Server_Host = '127.0.0.1'
     Server_Port = 15712
-    cut_coef = 15
+    cut_coef = 10
     cut_size = 30
     slide_size = 30
     predict_slide_size = 20
