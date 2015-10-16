@@ -1,12 +1,14 @@
 import sys
-sys.path.append('/home/dmlab/Slipper/lib/')
+sys.path.append('/Users/jhow/Study/Objective-c/udp/foot/lib/')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
 from mlpy import dtw_std as dtw
 from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
+from sklearn.grid_search import GridSearchCV
 from sklearn.cluster import KMeans
-from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -48,7 +50,6 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
         #tmp = Slide_Cut(transform_data, cut_size, slide_size)
         sample_size = int(len(tmp) * sample_ratio)
         trainning['data'].extend(tmp)
-        print len(tmp)
         # for test
         #if i == 0:
         #    trainning['label'].extend([1] * len(tmp))
@@ -70,7 +71,7 @@ def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     #print test_data
     testing_features = [] 
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
-    
+
     _, tmp = splitSteps(test_data, test_data['Axis1'])
 
     testing_features = CreateDTWFeature(dictionary, tmp)
@@ -82,16 +83,18 @@ def Multi_Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_s
     testing_features = [] 
     testing_labels = []
     for i in range(len(test_data)):
-        _,tmp = splitSteps(test_data[i], test_data[i]['Axis1'])
+        _, tmp = splitSteps(test_data[i], test_data[i]['Axis1'])
         testing_features.extend(CreateDTWFeature(dictionary, tmp))
         testing_labels.extend([i] * len(tmp))
 
     return testing_features, testing_labels
+
 def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
     #print testing_features, testing_features.shape
     print testing_features.shape
-    try: 
+
+    try:
         predicted_label = model.predict(testing_features)
     except:
         return 0
@@ -99,7 +102,7 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     voting = np.zeros(2)
     for i in set(predicted_label):
         voting[i] = np.sum(predicted_label == i)
-    
+
     result = voting.tolist().index(voting.max())
     print 'Max: ', voting, set(predicted_label), predicted_label, "Result:", result
     if result == 0:
@@ -108,41 +111,8 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     #    result = -1
     #print "voting: ", voting
     return result
-'''
-# Return the trainning feature
-def Preprocessing(train_data, test_data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std=1.5):
-    trainning = {'data': [], 'label': []}
-    testing   = {'data': [], 'label': []}
 
-    trainning_features = []
-    testing_features   = []
-    dictionary = []
-
-    # Fuzzy the direction and create the trainning data
-    for i in xrange(len(train_data)):
-        print 'Number of records: ' + str(len(train_data[i]))
-        
-        tmp = Slide_Cut(FuzzyDirection(train_data[i])[0], cut_size, slide_size)
-        sample_size = int(len(tmp) * sample_ratio)
-        trainning['data'].extend(tmp)
-        trainning['label'].extend([i]*len(tmp))
-        dictionary.extend(Kmeans(tmp, sample_size))
-    # Fuzzy the direction and create the testing data
-    for i in xrange(len(test_data)):
-        print 'Number of records: ' + str(len(test_data[i]))
-        #tmp = Cut(FuzzyDirection(test_data[i])[0], cut_size)[:-1]
-        
-        tmp = Slide_Cut(FuzzyDirection(test_data[i])[0], cut_size, slide_size)
-        testing['data'].extend(tmp)
-
-    print 'Create Features'
-    trainning_features = CreateDTWFeature(dictionary, trainning['data'])
-    testing_features = CreateDTWFeature(dictionary, testing['data'])
-    #trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
-    #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
-
-    return trainning_features, testing_features, trainning['label']
-'''
+def FindBestClf(data, dictionary):
 
 def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
     training = {'data': [], 'label': []}
@@ -201,8 +171,6 @@ def Evaluation(model, testing_features, testing_labels):
     acc = model.score(testing_features, testing_labels)
     print acc
     return acc
-
-
 
 def _Ploting(data):
     colors = ['r', 'g', 'b', 'm']
@@ -275,11 +243,11 @@ def FuzzyDirection(data):
     return pca.fit_transform(tmp.T).T
 
 def CreateDTWFeature(sample_data, test_data):
-    features = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: dtw(ts_test, ts_sample), sample_data), test_data)
-    
-    f = features(sample_data, test_data)
-    np.array(f).shape
-    return f
+    f = lambda sample_data, test_data: map(lambda ts_test: map(lambda ts_sample: dtw(ts_test, ts_sample), sample_data), test_data)
+
+    features = f(sample_data, test_data)
+
+    return features
 
 # return index of n-sized samples as dictionary
 def Sampling(data, sample_size):

@@ -8,7 +8,7 @@ import pandas as pd
 __author__ = 'maeglin89273'
 
 import socket as sk
-sys.path.append('/home/dmlab/Slipper/')
+sys.path.append('../../')
 import train_dtw_demo as train
 HOST = "192.168.0.184"
 PORT = 3070
@@ -138,9 +138,9 @@ def start_server(name, member_num):
     data = train.Load(name)
     training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.8)
     train.Ploting3D(training_features, labels)
-    #out_features = ['feature_1.csv', 'feature_2.csv', 'feature_3.csv']
-    #for i in np.unique(labels):
-    #    np.savetxt(out_features[i],np.array(training_features)[labels == i],delimiter=",")
+    out_features = ['frank.csv', 'xing.csv', 'jhow.csv', 'terry.csv']
+    for i in np.unique(labels):
+        np.savetxt(out_features[i],np.array(training_features)[labels == i],delimiter=",")
 
     for i in range(member_num):
         print "Model " + str(i) + "complete" 
