@@ -84,20 +84,21 @@ def direct_to_model(raw_data):
 
 
 class TCPHandler(SocketServer.BaseRequestHandler):
-    def __init__(self):
+    def setup(self):
         self.data = []
         self.buffer = ""
-
-    def setup(self):
         self.slipper_addr_str = self.client_address[0] + ":" +str(self.client_address[1])
         print "Connect the slippers from " + self.slipper_addr_str
 
     def handle(self):
-        json_data = self.request.recv(BUFFER_SIZE)
-        self.parse(json_data)
-        map(lambda x: direct_to_model(x), self.data)
-        # Clean up data list
-        self.data = []
+        while True:
+            json_data = self.request.recv(BUFFER_SIZE)
+            if not json_data:
+                break
+            self.parse(json_data)
+            map(lambda x: direct_to_model(x), self.data)
+            # Clean up data list
+            self.data = []
 
     def parse(self, json_data):
         try:
@@ -111,7 +112,7 @@ class TCPHandler(SocketServer.BaseRequestHandler):
                 except:
                     self.buffer = self.buffer + x
 
-    def finished(self):
+    def finish(self):
         print "Disconnect the slippers " + self.slipper_addr_str
 
 
@@ -134,8 +135,6 @@ def start_server(name, member_num):
 
     print "MeM_Num:", member_num
     print 'current ip address: ' + HOST
-    Server_Host = '127.0.0.1'
-    Server_Port = 15712
     cut_coef = 10
     cut_size = 30
     slide_size = 30
@@ -169,6 +168,7 @@ def start_server(name, member_num):
         print "Model " + str(i)
         model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
 
+    print "Ready to predict"
     server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
 
