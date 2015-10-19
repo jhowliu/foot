@@ -13,7 +13,7 @@ import train_dtw_demo as train
 HOST = "192.168.0.159"
 PORT = 3070
 
-BUFFER_SIZE = 512
+BUFFER_SIZE = 1024
 
 
 def direct_to_model(raw_data):
@@ -83,15 +83,37 @@ def direct_to_model(raw_data):
                 #clientsocket.sendall(message)
 
 
-class UDPHandler(SocketServer.BaseRequestHandler):
-    def handle(self):
-        json_data = self.request[0]
-        raw_data = json.loads(json_data)
-        direct_to_model(raw_data)
+class TCPHandler(SocketServer.BaseRequestHandler):
+    def __init__(self):
+        self.data = []
+        self.buffer = ""
 
-#def start_multithread(thread_num, name):
-#    server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
-#    server.serve_forever()
+    def setup(self):
+        self.slipper_addr_str = self.client_address[0] + ":" +str(self.client_address[1])
+        print "Connect the slippers from " + self.slipper_addr_str
+
+    def handle(self):
+        json_data = self.request.recv(BUFFER_SIZE)
+        self.parse(json_data)
+        map(lambda x: direct_to_model(x), self.data)
+        # Clean up data list
+        self.data = []
+
+    def parse(self, json_data):
+        try:
+            self.data.append(json.loads(json_data))
+        except:
+            tmp = self.buffer + json_data
+            self.buffer = ""
+            for x in tmp.replace("}{", "}||{").split("||"):
+                try:
+                    self.data.append(json.loads(string))
+                except:
+                    self.buffer = self.buffer + x
+
+    def finished(self):
+        print "Disconnect the slippers " + self.slipper_addr_str
+
 
 def start_server(name, member_num):
     global clientsocket
@@ -147,9 +169,7 @@ def start_server(name, member_num):
         print "Model " + str(i)
         model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
 
-    print "Ready to predict"
-    print sk.gethostbyname(sk.gethostname())
-    server = SocketServer.UDPServer((HOST, PORT), UDPHandler)
+    server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
 
 if __name__ == '__main__':
