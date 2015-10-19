@@ -1,19 +1,22 @@
 import sys
 sys.path.append('/Users/jhow/Study/Objective-c/udp/foot/lib/')
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.cross_validation import KFold
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
 from mlpy import dtw_std as dtw
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.grid_search import GridSearchCV
 from sklearn.svm import LinearSVC
 from sklearn.svm import SVC
-from sklearn.grid_search import GridSearchCV
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import ts_cluster
-import parse
 
 tool = ts_cluster.ts_cluster(10)
 
@@ -69,7 +72,7 @@ def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0
 
 def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     #print test_data
-    testing_features = [] 
+    testing_features = []
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
 
     _, tmp = splitSteps(test_data, test_data['Axis1'])
@@ -80,7 +83,7 @@ def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
 
 def Multi_Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
     #print test_data
-    testing_features = [] 
+    testing_features = []
     testing_labels = []
     for i in range(len(test_data)):
         _, tmp = splitSteps(test_data[i], test_data[i]['Axis1'])
@@ -98,6 +101,7 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
         predicted_label = model.predict(testing_features)
     except:
         return 0
+
     print "start voting."
     voting = np.zeros(2)
     for i in set(predicted_label):
@@ -112,53 +116,36 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
     #print "voting: ", voting
     return result
 
-def FindBestClf(data, dictionary):
+def FindBestClf(features, labels, master_no):
+    now_labels = map(lambda x: 1 if x == master_no else 0, labels)
+    tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-5, 5)], "C":[10**x for x in xrange(-5, 5)]}
+    #kfold = KFold(len(labels), n_folds=5, shuffle =True, random_state =10)
+    grid_search = GridSearchCV(SVC(class_weight='auto'), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
 
-def Run(data, cut_size=150, slide_size=100, sample_ratio=0.8, num_std= 1.5):
-    training = {'data': [], 'label': []}
-    testing  = {'data': [], 'label': []}
+    result = grid_search.fit(features, now_labels)
 
+    print "BinCount: " + str(np.bincount(now_labels))
+    print "Best F1-Score: " + str(result.best_score_)
+    print "Best Parameters: " + str(result.best_params_)
 
-    print 'Size of sliding is ' + str(slide_size)
-    print 'Size of cutting is ' + str(cut_size)
-    # Create dictionary and testing data
-    for i in xrange(len(data)):
-        print 'Data records: ' + str(len(data[i]))
-        tmp = Slide_Cut(FuzzyDirection(data[i])[0], cut_size, slide_size)
-        print 'Length of data after sliding is ' + str(tmp.shape)
-        sample_size = int(len(tmp) * sample_ratio)
+    return result.best_estimator_
 
-        sample_idx, testing_idx = Sampling(tmp, sample_size)
-        #_, centers = Kmeans(tmp[sample_idx, :], int(sample_size/2))
-        #training['data'].extend(centers)
-        #training['label'].extend([i]*int(sample_size/2))
-        training['data'].extend(tmp[sample_idx])
-        training['label'].extend([i]*len(sample_idx))
+def UnderSampling(features, labels, master_no):
+    features = np.array(features)
+    labels = np.array(labels)
+    master_num = len(features[labels==master_no])
 
-        testing['data'].extend(tmp[testing_idx, :])
-        testing['label'].extend([i]*len(testing_idx))
+    other_labels = filter(lambda x: x != master_no, np.unique(labels))
+    sampling_features = features[labels==master_no]
+    sampling_labels   = list(labels[labels==master_no])
 
+    for target in other_labels:
+        idx = np.random.choice(xrange(0, len(features[labels==target])), int(master_num/len(other_labels)), replace=False)
+        tmp = features[labels==target][idx]
+        sampling_features = np.insert(sampling_features, sampling_features.shape[0], tmp, axis=0)
+        sampling_labels.extend([target] * int(master_num/len(other_labels)))
 
-    print 'Size of Codebook is ' + str(np.array(training['data']).shape)
-
-
-    # Create Features of training
-    print 'Create Features'
-    training_feature = envelope(training['label'], training['data'], training['data'], num_std)
-    testing_feature  = envelope(training['label'], training['data'], testing['data'], num_std)
-
-    print np.array(training_feature).shape
-    print np.array(testing_feature).shape
-
-    # Prediction
-    print 'Trainning'
-    # one against one
-    model = Trainning(training_feature, training['label']);
-
-    print 'Predicting'
-    acc = Evaluation(testing_feature, testing['label'])
-
-    return training_feature, training['label'], acc
+    return sampling_features, sampling_labels
 
 def Training(trainning_features, labels, master_no, C = 1.0):
     print trainning_features.shape
@@ -297,6 +284,7 @@ def splitSteps(df, ts, threshold=0.5):
     diff = np.array(idx.index[1:]) - np.array(idx.index[:-1])
     #print diff
     tmp = idx[[x & y for x, y in zip(diff != 1, diff > 10)]][:-1]
+    tmp = tmp[1:]
     
     
     return tmp, map(lambda x:df.loc[xrange(tmp.index[x]-10, tmp.index[x]+20)]['Axis1'].reset_index(drop=True), xrange(0, len(tmp)))
