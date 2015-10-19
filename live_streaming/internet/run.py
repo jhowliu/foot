@@ -13,7 +13,7 @@ sys.path.append('../../')
 sys.path.append('../../lib/')
 import train_dtw_demo as train
 import wukong_client as wk
-HOST = "192.168.0.159"
+HOST = sk.gethostbyname(sk.gethostname())
 PORT = 3070
 RECORD_POS = 1
 
@@ -45,9 +45,9 @@ def direct_to_model(raw_data):
     except:
         return
 
-    if slipper_no == 4:
+    if slipper_id == 5:
         time.sleep(5)
-        wk.send(RECORD_POS, 5)
+        #wk.send(RECORD_POS, 5)
         print "Guest."
 
     elif buffer_count[slipper_no] < buffer_length:
@@ -84,19 +84,18 @@ def direct_to_model(raw_data):
                 # decrease the predict no
                 total_predict_no -= 1
 
-                if result == 1:
-                    result = slipper_no + 1
                 total_result.append(result)
                 if total_predict_no == 0:
                     total_result = np.array(total_result) + 1
-                    count = np.bincount()
+                    print total_result
+                    count = np.bincount(total_result)
                     result = np.where(count == np.max(count))[0][0]
 
                     if result == 0:
-                        wk.send(RECORD_POS, -1)
+                        #wk.send(RECORD_POS, -1)
                         print 'Prediction result is ' + str(-1)
                     else:
-                        wk.send(RECORD_POS, result)
+                        #wk.send(RECORD_POS, result)
                         print 'Prediction result is ' + str(result)
 
                     total_result = []
@@ -145,7 +144,7 @@ class TCPHandler(SocketServer.BaseRequestHandler):
         print "Disconnect the slippers " + self.slipper_addr_str
 
 
-def start_server(name, member_num):
+def start_server(name, member_num, s_id):
     global clientsocket
     global counter
     global first
@@ -164,6 +163,7 @@ def start_server(name, member_num):
     global total_result
     global total_predict_no
     global max_total_predict_no
+    global slipper_id
 
     print "MeM_Num:", member_num
     print 'current ip address: ' + HOST
@@ -185,7 +185,8 @@ def start_server(name, member_num):
     total_result = []
     max_total_predict_no = 5
     total_predict_no = max_total_predict_no
-
+    
+    slipper_id = s_id
     #clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     #clientsocket.connect((Server_Host, Server_Port))
 
@@ -209,11 +210,11 @@ def start_server(name, member_num):
     server.serve_forever()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print "<Usage: <User1> <User2> <User3>>"
+    if len(sys.argv) < 6:
+        print "<Usage: <User1> <User2> <User3> <User4> <Slipper_id>>"
         exit()
     name = []
-    for i in range(1, len(sys.argv)):
+    for i in range(1, len(sys.argv)-1):
         name.append(sys.argv[i])
-
-    start_server(name, member_num = (len(sys.argv)-1))
+    slipper_id = int(sys.argv[-1])
+    start_server(name, member_num = (len(sys.argv)-2), s_id = slipper_id)
