@@ -121,7 +121,7 @@ def FindBestClf(features, labels, master_no):
     tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-5, 5)], "C":[10**x for x in xrange(-5, 5)]}
     #kfold = KFold(len(labels), n_folds=5, shuffle =True, random_state =10)
     grid_search = GridSearchCV(SVC(class_weight='auto'), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
-
+    
     result = grid_search.fit(features, now_labels)
 
     print "BinCount: " + str(np.bincount(now_labels))
