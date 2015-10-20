@@ -13,7 +13,7 @@ sys.path.append('../../')
 sys.path.append('../../lib/')
 import train_dtw_demo as train
 import wukong_client as wk
-HOST = "192.168.0.159"
+HOST = ""
 PORT = 3070
 RECORD_POS = 1
 
@@ -42,6 +42,7 @@ def direct_to_model(raw_data):
     slipper_no = int(raw_data['Label'])
     try:
         parsed = [float(x) for x in raw_data['FFA2'].split(',')]
+	print parsed	
     except:
         return
 
@@ -89,7 +90,7 @@ def direct_to_model(raw_data):
                 total_result.append(result)
                 if total_predict_no == 0:
                     total_result = np.array(total_result) + 1
-                    count = np.bincount()
+                    count = np.bincount(total_result)
                     result = np.where(count == np.max(count))[0][0]
 
                     if result == 0:
