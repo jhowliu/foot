@@ -42,7 +42,6 @@ def direct_to_model(raw_data):
     slipper_no = int(raw_data['Label'])
     try:
         parsed = [float(x) for x in raw_data['FFA2'].split(',')]
-	print parsed	
     except:
         return
 
