@@ -45,12 +45,8 @@ def direct_to_model(raw_data):
     except:
         return
 
-    if slipper_id == 5:
-        time.sleep(5)
-        #wk.send(RECORD_POS, 5)
-        print "Guest."
 
-    elif buffer_count[slipper_no] < buffer_length:
+    if buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
         buffer_data_all[slipper_no][buffer_count[slipper_no]] = np.abs(parsed)
         buffer_count[slipper_no] += 1
@@ -58,8 +54,12 @@ def direct_to_model(raw_data):
     else:
         mean = np.mean(buffer_data_all[slipper_no][:,0])
         now_data = abs(parsed[0])
+        if ((slipper_id == 5) & (abs(now_data-mean) > bound)):
+            time.sleep(2)
+            #wk.send(RECORD_POS, 5)
+            print "Guest."
         #Over bound and start receive the data
-        if ((abs(now_data-mean) > bound) | start_recieve[slipper_no] == 1):
+        elif ((abs(now_data-mean) > bound) | start_recieve[slipper_no] == 1):
             #Record the data for prediction model
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
@@ -100,12 +100,12 @@ def direct_to_model(raw_data):
                     total_result = []
                     total_predict_no = max_total_predict_no
 
-                #message = str(slipper_no) + ',' + str(result) + '\n'
-                #clientsocket.sendall(message)
         else:
             counter += 1
             if counter == 70:
                 counter = 0
+		print "stop"
+                #wk.send(RECORD_POS, 0)
                 #message = str(slipper_no) + '\n'
                 #clientsocket.sendall(message)
 
@@ -113,6 +113,7 @@ def direct_to_model(raw_data):
 class TCPHandler(SocketServer.BaseRequestHandler):
     def setup(self):
         self.data = []
+        global max_total_predict_no
         self.buffer = ""
         self.slipper_addr_str = self.client_address[0] + ":" +str(self.client_address[1])
         print "Connect the slippers from " + self.slipper_addr_str
@@ -124,6 +125,8 @@ class TCPHandler(SocketServer.BaseRequestHandler):
                 break
             self.parse(json_data)
             map(lambda x: direct_to_model(x), self.data)
+            global max_total_predict_no
+
             # Clean up data list
             self.data = []
 
@@ -199,7 +202,7 @@ def start_server(name, member_num, s_id):
         np.savetxt(out_features[i],np.array(training_features)[labels == i],delimiter=",")
     '''
 
-    for i in range(member_num):
+    for i in range(member_num-1):
         sampling_features, sampling_labels = train.UnderSampling(training_features, labels, i)
         print "Model " + str(i)
         model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
@@ -218,4 +221,4 @@ if __name__ == '__main__':
     slipper_id = int(sys.argv[-3])
     PORT = int(sys.argv[-2])
     HOST = sys.argv[-1]
-    start_server(name, member_num = (len(sys.argv)-4), s_id = slipper_id)
+    start_server(name, member_num = (len(sys.argv)-3), s_id = slipper_id)
