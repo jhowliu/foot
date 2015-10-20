@@ -42,6 +42,7 @@ def direct_to_model(raw_data):
     slipper_no = int(raw_data['Label'])
     try:
         parsed = [float(x) for x in raw_data['FFA2'].split(',')]
+	print parsed	
     except:
         return
 
@@ -87,7 +88,6 @@ def direct_to_model(raw_data):
                 total_result.append(result)
                 if total_predict_no == 0:
                     total_result = np.array(total_result) + 1
-                    print total_result
                     count = np.bincount(total_result)
                     result = np.where(count == np.max(count))[0][0]
 
