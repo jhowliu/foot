@@ -5,16 +5,19 @@ import sys
 import thread
 import numpy as np
 import pandas as pd
+import time
 __author__ = 'maeglin89273'
 
 import socket as sk
 sys.path.append('../../')
+sys.path.append('../../lib/')
 import train_dtw_demo as train
+import wukong_client as wk
 HOST = "192.168.0.159"
 PORT = 3070
+RECORD_POS = 1
 
 BUFFER_SIZE = 1024
-
 
 def direct_to_model(raw_data):
     bound = 0.4
@@ -33,7 +36,10 @@ def direct_to_model(raw_data):
     global dictionary
     global first
     global counter
-    print scalers
+    global scalers
+    global total_result
+    global total_predict_no
+    global max_total_predict_no
 
     slipper_no = int(raw_data['Label'])
     try:
@@ -41,7 +47,12 @@ def direct_to_model(raw_data):
     except:
         return
 
-    if buffer_count[slipper_no] < buffer_length:
+    if slipper_no == 4:
+        time.sleep(5)
+        wk.send(RECORD_POS, 5)
+        print "Guest."
+
+    elif buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
         buffer_data_all[slipper_no][buffer_count[slipper_no]] = np.abs(parsed)
         buffer_count[slipper_no] += 1
@@ -62,7 +73,7 @@ def direct_to_model(raw_data):
                 first[slipper_no] = 0
 
             if sent_count[slipper_no] == cut_size*cut_coef-1:
-                print "start predict"
+                print "start predict " + str(total_predict_no)
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 result = train.Predicting(model[slipper_no], scalers[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
 
@@ -72,9 +83,27 @@ def direct_to_model(raw_data):
                 start_recieve[slipper_no] = 0
 
                 first[slipper_no] = 1
+                # decrease the predict no
+                total_predict_no -= 1
+
                 if result == 1:
                     result = slipper_no + 1
-                print "The result of prediction: " + str(result)
+                total_result.append(result)
+                if total_predict_no == 0:
+                    total_result = np.array(total_result) + 1
+                    count = np.bincount()
+                    result = np.where(count == np.max(count))[0][0]
+
+                    if result == 0:
+                        wk.send(RECORD_POS, -1)
+                        print 'Prediction result is ' + str(-1)
+                    else:
+                        wk.send(RECORD_POS, result)
+                        print 'Prediction result is ' + str(result)
+
+                    total_result = []
+                    total_predict_no = max_total_predict_no
+
                 #message = str(slipper_no) + ',' + str(result) + '\n'
                 #clientsocket.sendall(message)
         else:
@@ -86,20 +115,21 @@ def direct_to_model(raw_data):
 
 
 class TCPHandler(SocketServer.BaseRequestHandler):
-    def __init__(self):
+    def setup(self):
         self.data = []
         self.buffer = ""
-
-    def setup(self):
         self.slipper_addr_str = self.client_address[0] + ":" +str(self.client_address[1])
         print "Connect the slippers from " + self.slipper_addr_str
 
     def handle(self):
-        json_data = self.request.recv(BUFFER_SIZE)
-        self.parse(json_data)
-        map(lambda x: direct_to_model(x), self.data)
-        # Clean up data list
-        self.data = []
+        while True:
+            json_data = self.request.recv(BUFFER_SIZE)
+            if not json_data:
+                break
+            self.parse(json_data)
+            map(lambda x: direct_to_model(x), self.data)
+            # Clean up data list
+            self.data = []
 
     def parse(self, json_data):
         try:
@@ -113,7 +143,7 @@ class TCPHandler(SocketServer.BaseRequestHandler):
                 except:
                     self.buffer = self.buffer + x
 
-    def finished(self):
+    def finish(self):
         print "Disconnect the slippers " + self.slipper_addr_str
 
 
@@ -134,11 +164,12 @@ def start_server(name, member_num):
     global model
     global scalers
     global pca_model
+    global total_result
+    global total_predict_no
+    global max_total_predict_no
 
     print "MeM_Num:", member_num
     print 'current ip address: ' + HOST
-    Server_Host = '127.0.0.1'
-    Server_Port = 15712
     cut_coef = 10
     cut_size = 30
     slide_size = 30
@@ -154,6 +185,10 @@ def start_server(name, member_num):
     counter = 0
     model = []
     scalers = []
+
+    total_result = []
+    max_total_predict_no = 5
+    total_predict_no = max_total_predict_no
 
     #clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     #clientsocket.connect((Server_Host, Server_Port))
@@ -175,6 +210,7 @@ def start_server(name, member_num):
         scaled_sampling_features = scalers[i].transform(sampling_features)
         model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
 
+    print "Ready to predict"
     server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
 
