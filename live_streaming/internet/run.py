@@ -29,9 +29,11 @@ def direct_to_model(raw_data):
     global sent_count
     global start_recieve
     global model
+    global scalers
     global dictionary
     global first
     global counter
+    print scalers
 
     slipper_no = int(raw_data['Label'])
     try:
@@ -62,7 +64,7 @@ def direct_to_model(raw_data):
             if sent_count[slipper_no] == cut_size*cut_coef-1:
                 print "start predict"
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
-                result = train.Predicting(model[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
+                result = train.Predicting(model[slipper_no], scalers[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
 
                 #Shift the sent_data about 1*cut_size to record the following data
                 sent_data_all[slipper_no][:sent_count[slipper_no] - cut_size+1] = sent_data_all[slipper_no][cut_size:]
@@ -130,6 +132,7 @@ def start_server(name, member_num):
     global start_recieve
     global dictionary
     global model
+    global scalers
     global pca_model
 
     print "MeM_Num:", member_num
@@ -150,6 +153,7 @@ def start_server(name, member_num):
     first = [1] * member_num
     counter = 0
     model = []
+    scalers = []
 
     #clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     #clientsocket.connect((Server_Host, Server_Port))
@@ -167,6 +171,8 @@ def start_server(name, member_num):
     for i in range(member_num):
         sampling_features, sampling_labels = train.UnderSampling(training_features, labels, i)
         print "Model " + str(i)
+        scalers.append(train.Normalizing(sampling_features))
+        scaled_sampling_features = scalers[i].transform(sampling_features)
         model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
 
     server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
