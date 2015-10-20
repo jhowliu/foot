@@ -1,5 +1,6 @@
 import sys
-sys.path.append('/Users/jhow/Study/Objective-c/udp/foot/lib/')
+#sys.path.append('/Users/jhow/Study/Objective-c/udp/foot/lib/')
+sys.path.append('/home/jhowliu/Work/foot/lib')
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cross_validation import KFold
 from sklearn.decomposition import PCA
@@ -31,8 +32,8 @@ def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
 
 def build_pca(data):
     pca = PCA(n_components=1)
-    tmp = np.array([data['Axis1'], data['Axis2'], data['Axis3']]).T
-    pca.fit(tmp)
+    tmp = np.array([data['Axis1'].tolist(), data['Axis2'].tolist(), data['Axis3'].tolist()]).T
+    print tmp
     return pca
 
 def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0.8):
@@ -92,10 +93,11 @@ def Multi_Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_s
 
     return testing_features, testing_labels
 
-def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
+def Predicting(model, scaler, test_data, dictionary, pca_model, cut_size, slide_size):
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
     #print testing_features, testing_features.shape
     print testing_features.shape
+    scaler.transform(testing_features)
 
     try:
         predicted_label = model.predict(testing_features)
@@ -119,9 +121,7 @@ def Predicting(model, test_data, dictionary, pca_model, cut_size, slide_size):
 def FindBestClf(features, labels, master_no):
     now_labels = map(lambda x: 1 if x == master_no else 0, labels)
     tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-5, 5)], "C":[10**x for x in xrange(-5, 5)]}
-    #kfold = KFold(len(labels), n_folds=5, shuffle =True, random_state =10)
     grid_search = GridSearchCV(SVC(class_weight='auto'), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
-    
     result = grid_search.fit(features, now_labels)
 
     print "BinCount: " + str(np.bincount(now_labels))
@@ -129,6 +129,10 @@ def FindBestClf(features, labels, master_no):
     print "Best Parameters: " + str(result.best_params_)
 
     return result.best_estimator_
+
+def Normalizing(features):
+    scaler = StandardScaler()
+    return scaler.fit(features)
 
 def UnderSampling(features, labels, master_no):
     features = np.array(features)
@@ -307,7 +311,7 @@ def Load(filenames):
     for name in filenames:
         print 'Loading ' + name
         data.append(pd.read_csv(name))
-    
+
     return data
 
 if __name__ == '__main__':
