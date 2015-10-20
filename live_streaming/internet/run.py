@@ -15,7 +15,7 @@ import train_dtw_demo as train
 import wukong_client as wk
 HOST = '192.168.0.184'
 PORT = 3070
-RECORD_POS = 1
+RECORD_POS = 2
 
 BUFFER_SIZE = 1024
 
@@ -90,14 +90,15 @@ def direct_to_model(raw_data):
                 if total_predict_no == 0:
                     total_result = np.array(total_result) + 1
                     count = np.bincount(total_result)
+                    
                     result = np.where(count == np.max(count))[0][0]
-
+                    print total_result, count, result
                     if result == 0:
                         #wk.send(RECORD_POS, -1)
                         print 'Prediction result is ' + str(-1)
                     else:
                         #wk.send(RECORD_POS, result)
-                        print 'Prediction result is ' + str(result)
+                        print 'Prediction result is ' + str(slipper_no + 1)
 
                     total_result = []
                     total_predict_no = max_total_predict_no
