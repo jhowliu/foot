@@ -13,7 +13,7 @@ sys.path.append('../../')
 sys.path.append('../../lib/')
 import train_dtw_demo as train
 import wukong_client as wk
-HOST = sk.gethostbyname(sk.gethostname())
+HOST = '192.168.0.184'
 PORT = 3070
 RECORD_POS = 1
 
@@ -210,11 +210,13 @@ def start_server(name, member_num, s_id):
     server.serve_forever()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 6:
-        print "<Usage: <User1> <User2> <User3> <User4> <Slipper_id>>"
+    if len(sys.argv) < 7:
+        print "<Usage: <User1> <User2> <User3> <User4> <Slipper_id> <Port> <ip>>"
         exit()
     name = []
-    for i in range(1, len(sys.argv)-1):
+    for i in range(1, len(sys.argv)-3):
         name.append(sys.argv[i])
-    slipper_id = int(sys.argv[-1])
-    start_server(name, member_num = (len(sys.argv)-2), s_id = slipper_id)
+    slipper_id = int(sys.argv[-3])
+    PORT = int(sys.argv[-2])
+    HOST = sys.argv[-1]
+    start_server(name, member_num = (len(sys.argv)-4), s_id = slipper_id)
