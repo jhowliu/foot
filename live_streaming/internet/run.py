@@ -58,11 +58,11 @@ def direct_to_model(raw_data):
         now_data = abs(parsed[0])
         if ((slipper_id == 3) and (abs(now_data-mean) > bound)):
             time.sleep(2)
-            wk.send(RECORD_POS, 5)
+            #wk.send(RECORD_POS, 5)
 	    counter = 0
             print "Guest."
         #Over bound and start receive the data
-        elif ((abs(now_data-mean) > bound) or (start_recieve[slipper_no] == 1)):
+        elif ((abs(now_data-mean) > bound) or (start_receive[slipper_no] == 1)):
             #Record the data for prediction model
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
@@ -77,13 +77,13 @@ def direct_to_model(raw_data):
             if slipper_id == 3:
                 start_receive[slipper_no] = 0
                 time.sleep(3)
-                wk.send(RECORD_POS, -1)
+                #wk.send(RECORD_POS, -1)
                 print "Guest."
 
             elif sent_count[slipper_no] == cut_size*cut_coef-1:
                 print "start predict " + str(total_predict_no)
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
-                result = train.Predicting(model[slipper_no], scalers[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
+                result = train.Predicting(model[slipper_no], scalers[slipper_no], testing_data)
 
                 #Shift the sent_data about 1*cut_size to record the following data
                 sent_data_all[slipper_no][:sent_count[slipper_no] - buffer_shift+1] = sent_data_all[slipper_no][buffer_shift:]
@@ -102,10 +102,10 @@ def direct_to_model(raw_data):
                     result = np.where(count == np.max(count))[0][0]
                     print total_result, count, result
                     if result == 0:
-                        wk.send(RECORD_POS, -1)
+                        #wk.send(RECORD_POS, -1)
                         print 'Prediction result is ' + str(-1)
                     else:
-                        wk.send(RECORD_POS, slipper_no+1)
+                        #wk.send(RECORD_POS, slipper_no+1)
                         print 'Prediction result is ' + str(slipper_no + 1)
 
                     total_result = []
@@ -116,7 +116,7 @@ def direct_to_model(raw_data):
             if counter == 300:
                 counter = 0
                 total_predict_no = max_total_predict_no
-                wk.send(RECORD_POS, 0)
+                #wk.send(RECORD_POS, 0)
                 #message = str(slipper_no) + '\n'
                 #clientsocket.sendall(message)
 
@@ -204,18 +204,12 @@ def start_server(name, member_num, s_id):
     total_predict_no = max_total_predict_no
     
     slipper_id = s_id
-    #clientsocket = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-    #clientsocket.connect((Server_Host, Server_Port))
 
     data = train.Load(name)
-    training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.7)
-    train.Ploting3D(training_features, labels)
 
-    '''
-    out_features = ['frank.csv', 'xing.csv', 'jhow.csv', 'terry.csv']
-    for i in np.unique(labels):
-        np.savetxt(out_features[i],np.array(training_features)[labels == i],delimiter=",")
-    '''
+    training_features, labels = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.7)
+    print training_features.shape
+    print len(labels)
 
     for i in range(member_num-1):
         sampling_features, sampling_labels = train.UnderSampling(training_features, labels, i)

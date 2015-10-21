@@ -19,6 +19,8 @@ import pandas as pd
 import numpy as np
 import ts_cluster
 
+from Vectorization import Vectorize
+
 tool = ts_cluster.ts_cluster(10)
 
 def CreateTestingData(data, slidewindow, cut_size, num, dictionary):
@@ -37,48 +39,47 @@ def build_pca(data):
     return pca
 
 def Train_Preprocessing(train_data, cut_size=150, slide_size=100, sample_ratio=0.8):
-    trainning = {'data': [], 'label': []}
+    training = {'data': {'Axis1':[], 'Axis2':[], 'Axis3':[]}, 'label': []}
+    # First in
+    flag = True
+    for axis in ["Axis1", "Axis2", "Axis3"]:
+        for i in xrange(len(train_data)):
+            print 'Number of records: ' + str(len(train_data[i]))
+            _, tmp = splitSteps(train_data[i], train_data[i]['Axis1'], axis)
+            if flag:
+                training['label'].extend([i]*len(tmp))
+            training['data'][axis].extend(tmp)
+        flag = False
 
-    trainning_features = []
-    dictionary = []
+    training_features = np.array([[0.0] * len(training['data']['Axis1'])]).T
 
-    pca_data = pd.DataFrame(columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6', 'Time', 'Label'])
-    for i in xrange(len(train_data)):
-        pca_data = pca_data.append(train_data[i])
-    pca_model = build_pca(pca_data)
+    for axis in ["Axis1", "Axis2", "Axis3"]:
+        training_features = np.insert(training_features, training_features.shape[1], Vectorize(np.array(training['data'][axis])),axis=1)
+    training_features = np.delete(training_features, 0, axis=1)
 
-    # Fuzzy the direction and create the trainning data
-    for i in xrange(len(train_data)):
-        print 'Number of records: ' + str(len(train_data[i]))
-        _,tmp = splitSteps(train_data[i], train_data[i]['Axis1'])
-        #tmp = Slide_Cut(transform_data, cut_size, slide_size)
-        sample_size = int(len(tmp) * sample_ratio)
-        trainning['data'].extend(tmp)
-        # for test
-        #if i == 0:
-        #    trainning['label'].extend([1] * len(tmp))
-        #else:
-        #    trainning['label'].extend([0] * len(tmp))
-        # for complete demo
-        trainning['label'].extend([i]*len(tmp))
-        dictionary.extend(Kmeans(tmp, sample_size))
+    print np.array(training_features).shape
 
-    print 'Create Features'
-    trainning_features = CreateDTWFeature(dictionary, trainning['data'])
     print 'Finishing train features'
-    #trainning_features = envelope(trainning['label'], trainning['data'], trainning['data'], num_std)
-    #testing_features   = envelope(trainning['label'], trainning['data'], testing['data'], num_std)
 
-    return trainning_features, trainning['label'], dictionary, pca_model
+    return training_features, training['label']
 
-def Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size):
+def Test_Preprocessing(test_data):
     #print test_data
-    testing_features = []
     now_data = np.array([test_data['Axis1'], test_data['Axis2'], test_data['Axis3']]).T
 
-    _, tmp = splitSteps(test_data, test_data['Axis1'])
+    data = []
+    for axis in ["Axis1", "Axis2", "Axis3"]:
+        _, tmp = splitSteps(test_data, test_data['Axis1'], axis)
+        data.append(np.array(tmp))
 
-    testing_features = CreateDTWFeature(dictionary, tmp)
+    testing_features = np.array([[0.0] * len(data[0])]).T
+
+    for x in data:
+        testing_features = np.insert(testing_features, testing_features.shape[1], Vectorize(x), axis=1)
+
+    testing_features = np.delete(testing_features, 0, axis=1)
+
+    print testing_features.shape
 
     return np.array(testing_features)
 
@@ -93,13 +94,12 @@ def Multi_Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_s
 
     return testing_features, testing_labels
 
-def Predicting(model, scaler, test_data, dictionary, pca_model, cut_size, slide_size):
-    testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
-    #print testing_features, testing_features.shape
-    print testing_features.shape
+def Predicting(model, scaler, test_data):
+    print "Predicting"
+    testing_features = Test_Preprocessing(test_data)
 
     try:
-	testing_features = scaler.transform(testing_features)
+        testing_features = scaler.transform(testing_features)
         predicted_label = model.predict(testing_features)
     except:
         return 0
@@ -120,9 +120,9 @@ def Predicting(model, scaler, test_data, dictionary, pca_model, cut_size, slide_
 
 def FindBestClf(features, labels, master_no):
     now_labels = map(lambda x: 1 if x == master_no else 0, labels)
-    tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-10, 5)], "C":[10**x for x in xrange(-5, 1)]}
+    tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-5, 1)], "C":[10**x for x in xrange(-5, 1)]}
 
-    grid_search = GridSearchCV(SVC(class_weight='auto'), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
+    grid_search = GridSearchCV(SVC(class_weight="auto"), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
     result = grid_search.fit(features, now_labels)
 
     print "BinCount: " + str(np.bincount(now_labels))
@@ -283,16 +283,15 @@ def Cut(data, n):
 
     return np.array(chunks[:-1])
 
-def splitSteps(df, ts, threshold=0.5):
+def splitSteps(df, ts, axis, threshold=0.5):
     idx   = ts.loc[ts > threshold]
-    
+
     diff = np.array(idx.index[1:]) - np.array(idx.index[:-1])
     #print diff
     tmp = idx[[x & y for x, y in zip(diff != 1, diff > 10)]][:-1]
     tmp = tmp[1:]
-    
-    
-    return tmp, map(lambda x:df.loc[xrange(tmp.index[x]-10, tmp.index[x]+20)]['Axis1'].reset_index(drop=True), xrange(0, len(tmp)))
+
+    return tmp, map(lambda x:df.loc[xrange(tmp.index[x]-10, tmp.index[x]+20)][axis].reset_index(drop=True), xrange(0, len(tmp)))
 
 
 '''
