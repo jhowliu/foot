@@ -47,12 +47,12 @@ def Vectorize(seriesData):
         curPeakIdx = np.insert(curPeakIdx, 1, peakIdx[1][peakIdx[0] == idx])
         curValleyIdx = np.insert(curValleyIdx, 1, valleyIdx[1][valleyIdx[0] == idx])
 
-        vectorFeature[idx, 3] = len(curPeakIdx)
-        vectorFeature[idx, 4] = len(curValleyIdx)
-        vectorFeature[idx, 5] = np.mean(seriesData[idx, curPeakIdx])
-        vectorFeature[idx, 6] = np.mean(seriesData[idx, curValleyIdx])
-        vectorFeature[idx, 7] = np.mean(curPeakIdx[1:] - curPeakIdx[0:-1])
-        vectorFeature[idx, 8] = np.mean(curValleyIdx[1:] - curValleyIdx[0:-1])
+        #vectorFeature[idx, 3] = len(curPeakIdx)
+        #vectorFeature[idx, 4] = len(curValleyIdx)
+        #vectorFeature[idx, 5] = np.mean(seriesData[idx, curPeakIdx])
+        #vectorFeature[idx, 6] = np.mean(seriesData[idx, curValleyIdx])
+        #vectorFeature[idx, 7] = np.mean(curPeakIdx[1:] - curPeakIdx[0:-1])
+        #vectorFeature[idx, 8] = np.mean(curValleyIdx[1:] - curValleyIdx[0:-1])
 
     # 10) First reading of each time series
     # 11) Median of first 10% data points

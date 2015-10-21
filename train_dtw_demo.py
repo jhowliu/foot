@@ -75,8 +75,10 @@ def Test_Preprocessing(test_data):
     testing_features = np.array([[0.0] * len(data[0])]).T
 
     for x in data:
-        testing_features = np.insert(testing_features, testing_features.shape[1], Vectorize(x), axis=1)
-
+        try:
+            testing_features = np.insert(testing_features, testing_features.shape[1], Vectorize(x), axis=1)
+        except:
+            return
     testing_features = np.delete(testing_features, 0, axis=1)
 
     print testing_features.shape
