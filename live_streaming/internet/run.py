@@ -30,7 +30,7 @@ def direct_to_model(raw_data):
     global buffer_count
     global sent_data_all
     global sent_count
-    global start_recieve
+    global start_receive
     global model
     global scalers
     global dictionary
@@ -40,6 +40,7 @@ def direct_to_model(raw_data):
     global total_result
     global total_predict_no
     global max_total_predict_no
+    global buffer_shift
 
     slipper_no = int(raw_data['Label'])
     try:
@@ -66,22 +67,28 @@ def direct_to_model(raw_data):
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
             sent_count[slipper_no] += 1
-            start_recieve[slipper_no] = 1
+            start_receive[slipper_no] = 1
             counter = 0
 
             if first[slipper_no] == 1:
                 print "over bound, ", slipper_no
                 first[slipper_no] = 0
 
-            if sent_count[slipper_no] == cut_size*cut_coef-1:
+            if slipper_id == 3:
+                start_receive[slipper_no] = 0
+                time.sleep(3)
+                wk.send(RECORD_POS, -1)
+                print "Guest."
+
+            elif sent_count[slipper_no] == cut_size*cut_coef-1:
                 print "start predict " + str(total_predict_no)
                 testing_data = pd.DataFrame(sent_data_all[slipper_no], columns=['Axis1', 'Axis2', 'Axis3', 'Axis4', 'Axis5', 'Axis6'])
                 result = train.Predicting(model[slipper_no], scalers[slipper_no], testing_data, dictionary, pca_model, cut_size, predict_slide_size)
 
                 #Shift the sent_data about 1*cut_size to record the following data
-                sent_data_all[slipper_no][:sent_count[slipper_no] - cut_size+1] = sent_data_all[slipper_no][cut_size:]
-                sent_count[slipper_no] -= cut_size
-                start_recieve[slipper_no] = 0
+                sent_data_all[slipper_no][:sent_count[slipper_no] - buffer_shift+1] = sent_data_all[slipper_no][buffer_shift:]
+                sent_count[slipper_no] -= buffer_shift
+                start_receive[slipper_no] = 0
 
                 first[slipper_no] = 1
                 # decrease the predict no
@@ -108,7 +115,7 @@ def direct_to_model(raw_data):
             counter += 1
             if counter == 300:
                 counter = 0
-		print "stop"
+                total_predict_no = max_total_predict_no
                 wk.send(RECORD_POS, 0)
                 #message = str(slipper_no) + '\n'
                 #clientsocket.sendall(message)
@@ -156,13 +163,14 @@ def start_server(name, member_num, s_id):
     global first
     global cut_coef
     global cut_size
+    global buffer_shift
     global predict_slide_size
     global buffer_length
     global buffer_data_all
     global buffer_count
     global sent_data_all
     global sent_count
-    global start_recieve
+    global start_receive
     global dictionary
     global model
     global scalers
@@ -182,9 +190,10 @@ def start_server(name, member_num, s_id):
     buffer_data_all = [np.zeros([buffer_length, 6]) for _ in xrange(member_num)]
     buffer_count = [0] * member_num
     sent_data_all = [np.zeros([cut_size*cut_coef, 6]) for _ in xrange(member_num)]
+    buffer_shift = 30    
 
     sent_count = [0] * member_num
-    start_recieve = [0] * member_num
+    start_receive = [0] * member_num
     first = [1] * member_num
     counter = 0
     model = []
@@ -200,7 +209,7 @@ def start_server(name, member_num, s_id):
 
     data = train.Load(name)
     training_features, labels, dictionary, pca_model = train.Train_Preprocessing(data[:], cut_size=cut_size, slide_size=slide_size, sample_ratio=0.7)
-    #train.Ploting3D(training_features, labels)
+    train.Ploting3D(training_features, labels)
 
     '''
     out_features = ['frank.csv', 'xing.csv', 'jhow.csv', 'terry.csv']
@@ -213,7 +222,7 @@ def start_server(name, member_num, s_id):
         print "Model " + str(i)
         scalers.append(train.Normalizing(sampling_features))
         scaled_sampling_features = scalers[i].transform(sampling_features)
-        model.append(train.FindBestClf(np.array(sampling_features), sampling_labels, i))
+        model.append(train.FindBestClf(np.array(scaled_sampling_features), sampling_labels, i))
 
     print "Ready to predict"
     server = SocketServer.TCPServer((HOST, PORT), TCPHandler)
