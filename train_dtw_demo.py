@@ -97,9 +97,9 @@ def Predicting(model, scaler, test_data, dictionary, pca_model, cut_size, slide_
     testing_features = Test_Preprocessing(test_data, dictionary, pca_model, cut_size, slide_size)
     #print testing_features, testing_features.shape
     print testing_features.shape
-    scaler.transform(testing_features)
 
     try:
+	testing_features = scaler.transform(testing_features)
         predicted_label = model.predict(testing_features)
     except:
         return 0
@@ -120,7 +120,8 @@ def Predicting(model, scaler, test_data, dictionary, pca_model, cut_size, slide_
 
 def FindBestClf(features, labels, master_no):
     now_labels = map(lambda x: 1 if x == master_no else 0, labels)
-    tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-5, 5)], "C":[10**x for x in xrange(-5, 5)]}
+    tuned_params = {"kernel":["rbf"], "gamma": [10**x for x in xrange(-10, 5)], "C":[10**x for x in xrange(-5, 1)]}
+
     grid_search = GridSearchCV(SVC(class_weight='auto'), tuned_params, cv=5, verbose=1, scoring='f1', n_jobs=4)
     result = grid_search.fit(features, now_labels)
 
