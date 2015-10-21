@@ -15,7 +15,7 @@ import train_dtw_demo as train
 import wukong_client as wk
 HOST = '192.168.0.184'
 PORT = 3070
-RECORD_POS = 2
+RECORD_POS = 1
 
 BUFFER_SIZE = 1024
 
@@ -47,7 +47,6 @@ def direct_to_model(raw_data):
     except:
         return
 
-
     if buffer_count[slipper_no] < buffer_length:
         print 'collect buffer data'
         buffer_data_all[slipper_no][buffer_count[slipper_no]] = np.abs(parsed)
@@ -56,17 +55,19 @@ def direct_to_model(raw_data):
     else:
         mean = np.mean(buffer_data_all[slipper_no][:,0])
         now_data = abs(parsed[0])
-        if ((slipper_id == 5) & (abs(now_data-mean) > bound)):
+        if ((slipper_id == 3) and (abs(now_data-mean) > bound)):
             time.sleep(2)
-            #wk.send(RECORD_POS, 5)
+            wk.send(RECORD_POS, 5)
+	    counter = 0
             print "Guest."
         #Over bound and start receive the data
-        elif ((abs(now_data-mean) > bound) | start_recieve[slipper_no] == 1):
+        elif ((abs(now_data-mean) > bound) or (start_recieve[slipper_no] == 1)):
             #Record the data for prediction model
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
             sent_count[slipper_no] += 1
             start_recieve[slipper_no] = 1
+            counter = 0
 
             if first[slipper_no] == 1:
                 print "over bound, ", slipper_no
@@ -94,10 +95,10 @@ def direct_to_model(raw_data):
                     result = np.where(count == np.max(count))[0][0]
                     print total_result, count, result
                     if result == 0:
-                        #wk.send(RECORD_POS, -1)
+                        wk.send(RECORD_POS, -1)
                         print 'Prediction result is ' + str(-1)
                     else:
-                        #wk.send(RECORD_POS, result)
+                        wk.send(RECORD_POS, slipper_no+1)
                         print 'Prediction result is ' + str(slipper_no + 1)
 
                     total_result = []
@@ -105,10 +106,10 @@ def direct_to_model(raw_data):
 
         else:
             counter += 1
-            if counter == 70:
+            if counter == 300:
                 counter = 0
 		print "stop"
-                #wk.send(RECORD_POS, 0)
+                wk.send(RECORD_POS, 0)
                 #message = str(slipper_no) + '\n'
                 #clientsocket.sendall(message)
 
