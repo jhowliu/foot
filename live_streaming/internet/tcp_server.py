@@ -17,7 +17,7 @@ if len(sys.argv) > 1:
 else:
     exit()
 
-out.write("Axis1,Axis2,Axis3,Axis4,Axis5,Axis6,Label,Timestamp")
+out.write("Axis1,Axis2,Axis3,Axis4,Axis5,Axis6,Label,Timestamp\n")
 
 def direct_to_model(raw_data):
     out.write(",".join([raw_data['FFA2'], raw_data['Label'], raw_data['Timestamp']]) + '\n')

@@ -58,11 +58,11 @@ def direct_to_model(raw_data):
         now_data = abs(parsed[0])
         if ((slipper_id == 3) and (abs(now_data-mean) > bound)):
             time.sleep(2)
-            wk.send(RECORD_POS, 5)
+            wk.send(RECORD_POS, 3)
 	    counter = 0
             print "Guest."
         #Over bound and start receive the data
-        elif ((abs(now_data-mean) > bound) or (start_recieve[slipper_no] == 1)):
+        elif ((abs(now_data-mean) > bound) or (start_receive[slipper_no] == 1)):
             #Record the data for prediction model
             sent_data_all[slipper_no][sent_count[slipper_no]] = parsed
             #Record the data index
@@ -113,8 +113,9 @@ def direct_to_model(raw_data):
 
         else:
             counter += 1
-            if counter == 300:
+            if counter == 150:
                 counter = 0
+                print "stop"
                 total_predict_no = max_total_predict_no
                 wk.send(RECORD_POS, 0)
                 #message = str(slipper_no) + '\n'
@@ -183,7 +184,7 @@ def start_server(name, member_num, s_id):
     print "MeM_Num:", member_num
     print 'current ip address: ' + HOST
     cut_coef = 10
-    cut_size = 30
+    cut_size = 20
     slide_size = 30
     predict_slide_size = 20
     buffer_length = 10
